@@ -6,7 +6,8 @@ export default function SharedNav() {
   const isFinder   = pathname.startsWith('/finder');
   const isDebugger = pathname.startsWith('/debugger');
   const isVisualizer = pathname.startsWith('/visualizer');
-  const isAnalyzer = pathname.startsWith('/analyzer');
+  const isAnalyzer  = pathname.startsWith('/analyzer');
+  const isInsights  = pathname.startsWith('/insights');
   const navBtn = (active, color, label, path) => (
     <button onClick={() => navigate(path)} style={{padding:'5px 14px',borderRadius:8,border: active ? `1px solid ${color}50` : '1px solid transparent',background: active ? `${color}15` : 'transparent',color: active ? color : '#4a5a7a',fontSize:12,fontWeight:600,cursor:'pointer',fontFamily:"'Syne',sans-serif",transition:'all 0.15s'}}>
       {label}
@@ -24,9 +25,10 @@ export default function SharedNav() {
         {navBtn(isDebugger,  '#a78bfa', '🧹 Debugger',  '/debugger')}
         {navBtn(isVisualizer,'#6ee7b7', '📊 Visualizer','/visualizer')}
         {navBtn(isAnalyzer,  '#fbbf24', '📐 Analyzer',  '/analyzer')}
+        {navBtn(isInsights,  '#a855f7', '🤖 AI Insights','/insights')}
       </div>
       <div style={{marginLeft:'auto',fontSize:11,color:'#1e3a8a',fontFamily:"'Space Mono',monospace"}}>
-        {isFinder && '● FINDER'}{isDebugger && '● DEBUGGER'}{isVisualizer && '● VISUALIZER'}{isAnalyzer && '● ANALYZER'}
+        {isFinder && '● FINDER'}{isDebugger && '● DEBUGGER'}{isVisualizer && '● VISUALIZER'}{isAnalyzer && '● ANALYZER'}{isInsights && '● AI INSIGHTS'}
       </div>
     </div>
   );

@@ -5,6 +5,7 @@ import FinderApp from './finder/FinderApp';
 import DebuggerApp from './debugger/DebuggerApp';
 import VisualizerApp from './visualizer/VisualizerApp';
 import StatAnalyzerApp from './analyzer/StatAnalyzerApp';
+import InsightsApp from './insights/InsightsApp';
 
 export default function App() {
   return (
@@ -15,6 +16,7 @@ export default function App() {
         <Route path="/debugger/*" element={<><SharedNav /><DebuggerApp /></>} />
         <Route path="/visualizer/*" element={<><SharedNav /><VisualizerApp /></>} />
         <Route path="/analyzer/*" element={<><SharedNav /><StatAnalyzerApp /></>} />
+        <Route path="/insights/*" element={<><SharedNav /><InsightsApp /></>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

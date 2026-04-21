@@ -34,6 +34,37 @@ export async function analyzeFile(file) {
   return cleanerReq('/analyze', form);
 }
 
+// ── AI Insights Engine ────────────────────────────────────────────────────
+
+async function cleanerJson(path, body) {
+  let res;
+  try { res = await fetch(CLEANER + path, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) }); }
+  catch { throw new Error('Cannot reach the cleaning agent. Make sure it is running.'); }
+  if (!res.ok) {
+    const ct = res.headers.get('content-type') || '';
+    if (ct.includes('application/json')) { const b = await res.json(); throw new Error(b.detail || 'Server error'); }
+    throw new Error('Server error ' + res.status);
+  }
+  return res.json();
+}
+
+export async function aiInsightsUpload(file) {
+  const form = new FormData(); form.append('file', file);
+  return cleanerReq('/ai-insights/upload', form);
+}
+
+export async function aiInsightsDetect(fileId) {
+  return cleanerJson('/ai-insights/detect', { file_id: fileId });
+}
+
+export async function aiInsightsDetails(fileId, insightId) {
+  return cleanerJson('/ai-insights/insight-details', { file_id: fileId, insight_id: insightId });
+}
+
+export async function aiInsightsChartPreview(payload) {
+  return cleanerJson('/ai-insights/chart-preview', payload);
+}
+
 // ── Statistical Analyzer (new per-column flow) ────────────────────────────
 
 export async function statUpload(file) {

@@ -11,6 +11,9 @@ const CSS = `
   .debugger-card:hover{transform:translateY(-8px);border-color:#8b5cf6!important;box-shadow:0 32px 80px rgba(139,92,246,0.2)!important;}
   .viz-card:hover{transform:translateY(-8px);border-color:#10b981!important;box-shadow:0 32px 80px rgba(16,185,129,0.2)!important;}
   .analyzer-card:hover{transform:translateY(-8px);border-color:#f59e0b!important;box-shadow:0 32px 80px rgba(245,158,11,0.2)!important;}
+  .insights-card:hover{transform:translateY(-8px);border-color:#a855f7!important;box-shadow:0 32px 80px rgba(168,85,247,0.2)!important;}
+  .btn-violet{transition:all 0.2s;}
+  .btn-violet:hover{transform:scale(1.04);box-shadow:0 8px 32px rgba(168,85,247,0.4);}
   .btn-blue{transition:all 0.2s;}
   .btn-blue:hover{transform:scale(1.04);box-shadow:0 8px 32px rgba(59,130,246,0.4);}
   .btn-purple{transition:all 0.2s;}
@@ -116,10 +119,30 @@ export default function LandingPage() {
             <button className="btn-amber" style={{width:'100%',padding:14,border:'none',borderRadius:12,background:'linear-gradient(135deg,#92400e,#f59e0b)',color:'#fff',fontSize:15,fontWeight:700,cursor:'pointer',fontFamily:"'Syne',sans-serif"}}>Analyse Stats →</button>
           </div>
 
+          {/* Card 5 — AI Insights Engine */}
+          <div className="card-hover insights-card" onClick={() => navigate('/insights')} style={{background:'rgba(12,6,30,0.92)',border:'1px solid rgba(109,40,217,0.3)',borderRadius:24,padding:36,cursor:'pointer',position:'relative',overflow:'hidden'}}>
+            <div style={{position:'absolute',top:0,right:0,width:200,height:200,background:'rgba(168,85,247,0.04)',borderRadius:'50%',transform:'translate(50%,-50%)',pointerEvents:'none'}}/>
+            <div style={{fontSize:48,marginBottom:20,display:'inline-block',animation:'float 5s ease-in-out infinite 2s'}}>🤖</div>
+            <div style={{display:'flex',alignItems:'center',gap:8,marginBottom:8,flexWrap:'wrap'}}>
+              <h2 style={{fontSize:24,fontWeight:800,color:'#e0e8ff',margin:0}}>AI Insights Engine</h2>
+            </div>
+            <div style={{display:'flex',gap:6,marginBottom:12,flexWrap:'wrap'}}>
+              <span style={{padding:'2px 8px',background:'rgba(168,85,247,0.15)',border:'1px solid rgba(168,85,247,0.3)',borderRadius:6,fontSize:10,color:'#d8b4fe',fontFamily:"'Space Mono',monospace"}}>STATISTICAL</span>
+              <span style={{padding:'2px 8px',background:'rgba(124,58,237,0.15)',border:'1px solid rgba(124,58,237,0.3)',borderRadius:6,fontSize:10,color:'#a78bfa',fontFamily:"'Space Mono',monospace"}}>AUTO CHARTS</span>
+            </div>
+            <p style={{color:'#6b7a9a',fontSize:14,lineHeight:1.7,marginBottom:28}}>Upload a dataset and get automatically detected relationships, trends, and patterns as clickable insight cards. Click any card to generate a chart and explanation instantly.</p>
+            <div style={{display:'flex',flexWrap:'wrap',gap:7,marginBottom:28}}>
+              {['🔗 Correlations','📅 Trends','📊 Group Diffs','⚠️ Data Quality','🎨 Customize'].map(f=>(
+                <span key={f} style={{padding:'4px 10px',background:'rgba(109,40,217,0.15)',border:'1px solid rgba(109,40,217,0.3)',borderRadius:20,fontSize:11,color:'#c4b5fd'}}>{f}</span>
+              ))}
+            </div>
+            <button className="btn-violet" style={{width:'100%',padding:14,border:'none',borderRadius:12,background:'linear-gradient(135deg,#5b21b6,#a855f7)',color:'#fff',fontSize:15,fontWeight:700,cursor:'pointer',fontFamily:"'Syne',sans-serif"}}>Explore Insights →</button>
+          </div>
+
         </div>
 
         <div style={{textAlign:'center',padding:'18px 24px',background:'rgba(14,24,58,0.5)',border:'1px solid rgba(30,58,138,0.2)',borderRadius:16,maxWidth:700,margin:'0 auto'}}>
-          <p style={{color:'#4a5a7a',fontSize:13,lineHeight:1.7,margin:0}}>💡 <strong style={{color:'#6b7a9a'}}>Recommended workflow:</strong> Use <strong style={{color:'#6fa3ef'}}>Finder</strong> to discover a dataset → <strong style={{color:'#a78bfa'}}>Debugger &amp; Cleaner</strong> to validate and auto-clean it → <strong style={{color:'#fbbf24'}}>Stat Analyzer</strong> to understand the distributions → <strong style={{color:'#6ee7b7'}}>Visualizer</strong> to build your dashboard.</p>
+          <p style={{color:'#4a5a7a',fontSize:13,lineHeight:1.7,margin:0}}>💡 <strong style={{color:'#6b7a9a'}}>Recommended workflow:</strong> Use <strong style={{color:'#6fa3ef'}}>Finder</strong> to discover a dataset → <strong style={{color:'#a78bfa'}}>Debugger &amp; Cleaner</strong> to validate and auto-clean it → <strong style={{color:'#fbbf24'}}>Stat Analyzer</strong> to understand distributions → <strong style={{color:'#d8b4fe'}}>AI Insights</strong> to discover relationships automatically → <strong style={{color:'#6ee7b7'}}>Visualizer</strong> to build your dashboard.</p>
         </div>
       </div>
     </div>
