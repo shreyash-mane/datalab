@@ -1,393 +1,329 @@
-import { useState, useCallback } from 'react';
-import { analyzeFile } from '../debugger/api/client';
+import { useState, useCallback, useMemo } from 'react';
+import { statUpload, statAnalyzeColumn } from '../debugger/api/client';
 
-// ─── Colour helpers ───────────────────────────────────────────────────────────
+// ─── Theme tokens ─────────────────────────────────────────────────────────────
+const C = {
+  bg:       '#030712',
+  surface:  '#0a0f18',
+  surface2: '#0d1520',
+  border:   '#1e2a3a',
+  borderA:  'rgba(245,158,11,0.22)',
+  amber:    '#f59e0b',
+  amber2:   '#fbbf24',
+  text:     '#e5e7eb',
+  text2:    '#9ca3af',
+  text3:    '#4b5563',
+  green:    '#10b981',
+  red:      '#ef4444',
+  purple:   '#8b5cf6',
+};
 
-const AMBER  = '#f59e0b';
-const AMBER2 = '#fbbf24';
-const AMBERD = '#92400e';
-const DARK   = '#030712';
-const CARD   = '#0a0f18';
-const CARD2  = '#0d1520';
-const BORDER = '#1e2a3a';
-const BORDERA= 'rgba(245,158,11,0.2)';
-const TEXT   = '#e5e7eb';
-const TEXT2  = '#9ca3af';
-const TEXT3  = '#4b5563';
-
-function corrColor(v) {
-  if (v === null || v === undefined) return 'rgba(14,22,40,0.6)';
-  const abs = Math.abs(v);
-  if (v > 0) {
-    if (abs >= 0.7) return 'rgba(16,185,129,0.75)';
-    if (abs >= 0.4) return 'rgba(16,185,129,0.40)';
-    if (abs >= 0.2) return 'rgba(16,185,129,0.20)';
-  } else {
-    if (abs >= 0.7) return 'rgba(239,68,68,0.70)';
-    if (abs >= 0.4) return 'rgba(239,68,68,0.38)';
-    if (abs >= 0.2) return 'rgba(239,68,68,0.18)';
-  }
-  return 'rgba(20,30,50,0.5)';
-}
-
-function skewColor(sk) {
-  if (!sk) return TEXT3;
-  const a = Math.abs(sk);
-  if (a < 0.5) return '#10b981';
-  if (a < 1.0) return '#f59e0b';
-  return '#ef4444';
-}
-
-function fmtN(v, dp = 2) {
+// ─── Tiny helpers ─────────────────────────────────────────────────────────────
+const fmtN = (v, dp = 2) => {
   if (v === null || v === undefined) return '—';
   if (typeof v !== 'number') return String(v);
   if (Math.abs(v) >= 1_000_000) return (v / 1_000_000).toFixed(dp) + 'M';
   if (Math.abs(v) >= 1_000)     return (v / 1_000).toFixed(dp) + 'K';
   return v.toLocaleString(undefined, { maximumFractionDigits: dp });
+};
+
+const TYPE_COLOR  = { numerical: C.amber, categorical: C.purple, date: C.green };
+const TYPE_LABEL  = { numerical: 'NUMERICAL', categorical: 'CATEGORICAL', date: 'DATE' };
+const TYPE_ICON   = { numerical: '123', categorical: 'Aa', date: '📅' };
+
+function TypeBadge({ type }) {
+  const color = TYPE_COLOR[type] || C.text3;
+  return (
+    <span style={{ padding:'2px 7px', background:`${color}18`, border:`1px solid ${color}44`, borderRadius:4, fontSize:9, color, fontFamily:'monospace', letterSpacing:0.5 }}>
+      {TYPE_ICON[type] || '?'} {TYPE_LABEL[type] || type?.toUpperCase()}
+    </span>
+  );
 }
 
-// ─── Sub-components ───────────────────────────────────────────────────────────
-
-function StatPill({ label, value, color = AMBER2, sub }) {
+// ─── Stat card ────────────────────────────────────────────────────────────────
+function StatCard({ label, value, sub, highlight }) {
   return (
-    <div style={{ background: CARD, border: `1px solid ${BORDERA}`, borderRadius: 12, padding: '14px 18px', minWidth: 110, flex: 1 }}>
-      <div style={{ fontSize: 10, color: TEXT3, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>{label}</div>
-      <div style={{ fontSize: 24, fontWeight: 800, color, lineHeight: 1 }}>{value}</div>
-      {sub && <div style={{ fontSize: 10, color: TEXT3, marginTop: 4 }}>{sub}</div>}
+    <div style={{ background: C.surface2, borderRadius:8, padding:'10px 12px', textAlign:'center' }}>
+      <div style={{ fontSize:9, color: C.text3, textTransform:'uppercase', letterSpacing:0.8, marginBottom:4 }}>{label}</div>
+      <div style={{ fontSize:16, fontWeight:800, color: highlight || C.text, lineHeight:1 }}>{value}</div>
+      {sub && <div style={{ fontSize:10, color: C.text3, marginTop:3 }}>{sub}</div>}
     </div>
   );
 }
 
-function MissingBar({ pct }) {
-  const w = Math.min(100, pct || 0);
-  const color = w === 0 ? '#10b981' : w < 10 ? AMBER : '#ef4444';
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-      <div style={{ flex: 1, height: 5, background: '#1e2a3a', borderRadius: 3 }}>
-        <div style={{ width: `${w}%`, height: '100%', background: color, borderRadius: 3, transition: 'width 0.4s' }} />
-      </div>
-      <span style={{ fontSize: 10, color: TEXT3, width: 36, textAlign: 'right' }}>{pct?.toFixed(1)}%</span>
-    </div>
-  );
-}
-
-// Quartile box-plot visualization (CSS only, no recharts)
-function BoxPlot({ col }) {
-  const { min, max, q1, q2, q3 } = col;
+// ─── Box-plot strip ───────────────────────────────────────────────────────────
+function BoxPlot({ r }) {
+  const { min, max, q1, q2, q3 } = r;
   if (min === null || max === null) return null;
-  const range = max - min || 1;
-  const pct = v => ((v - min) / range * 100).toFixed(1) + '%';
-  const w = v => (((v) / range) * 100).toFixed(1) + '%';
+  const span = max - min || 1;
+  const pct  = v => ((v - min) / span * 100).toFixed(1) + '%';
   return (
-    <div style={{ marginTop: 10, padding: '6px 0' }}>
-      <div style={{ fontSize: 9, color: TEXT3, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 0.8 }}>Distribution (min → Q1 → median → Q3 → max)</div>
-      <div style={{ position: 'relative', height: 20, background: '#111827', borderRadius: 4 }}>
+    <div style={{ marginTop:12 }}>
+      <div style={{ fontSize:9, color: C.text3, textTransform:'uppercase', letterSpacing:0.8, marginBottom:5 }}>
+        Distribution — Min · Q1 · Median · Q3 · Max
+      </div>
+      <div style={{ position:'relative', height:22, background:'#0d1e30', borderRadius:5 }}>
         {/* IQR box */}
-        <div style={{
-          position: 'absolute', top: 3, height: 14,
-          left: pct(q1), width: `${((q3 - q1) / range * 100).toFixed(1)}%`,
-          background: `rgba(245,158,11,0.35)`, border: `1px solid ${AMBER}`, borderRadius: 2,
-        }} />
+        <div style={{ position:'absolute', top:4, height:14, left:pct(q1), width:`${((q3-q1)/span*100).toFixed(1)}%`, background:`rgba(245,158,11,0.28)`, border:`1.5px solid ${C.amber}`, borderRadius:3 }} />
         {/* Median line */}
-        <div style={{
-          position: 'absolute', top: 2, height: 16, width: 2,
-          left: `calc(${pct(q2)} - 1px)`, background: AMBER2, borderRadius: 1,
-        }} />
-        {/* Min / Max ticks */}
+        <div style={{ position:'absolute', top:3, height:16, width:3, left:`calc(${pct(q2)} - 1.5px)`, background: C.amber2, borderRadius:2 }} />
+        {/* Min / Max whiskers */}
         {[min, max].map((v, i) => (
-          <div key={i} style={{ position: 'absolute', top: 4, height: 12, width: 2, left: `calc(${pct(v)} - 1px)`, background: TEXT3, borderRadius: 1 }} />
+          <div key={i} style={{ position:'absolute', top:5, height:12, width:2, left:`calc(${pct(v)} - 1px)`, background: C.text3, borderRadius:1 }} />
         ))}
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 9, color: TEXT3, marginTop: 3 }}>
-        <span>{fmtN(min, 0)}</span>
-        <span style={{ color: '#6b7280' }}>Q1 {fmtN(q1, 0)}</span>
-        <span style={{ color: AMBER2 }}>M {fmtN(q2, 0)}</span>
-        <span style={{ color: '#6b7280' }}>Q3 {fmtN(q3, 0)}</span>
-        <span>{fmtN(max, 0)}</span>
+      <div style={{ display:'flex', justifyContent:'space-between', fontSize:9, color: C.text3, marginTop:3 }}>
+        <span>{fmtN(min, 1)}</span>
+        <span>Q1 {fmtN(q1, 1)}</span>
+        <span style={{ color: C.amber2 }}>M {fmtN(q2, 1)}</span>
+        <span>Q3 {fmtN(q3, 1)}</span>
+        <span>{fmtN(max, 1)}</span>
       </div>
     </div>
   );
 }
 
-function NumericalCard({ name, col }) {
-  const stats = [
-    { label: 'Mean',    value: fmtN(col.mean) },
-    { label: 'Median',  value: fmtN(col.median) },
-    { label: 'Std Dev', value: fmtN(col.std) },
-    { label: 'Variance',value: fmtN(col.variance) },
-    { label: 'Min',     value: fmtN(col.min) },
-    { label: 'Max',     value: fmtN(col.max) },
-    { label: 'Q1',      value: fmtN(col.q1) },
-    { label: 'Q3',      value: fmtN(col.q3) },
-    { label: 'IQR',     value: fmtN(col.iqr) },
-    { label: 'Range',   value: fmtN(col.range) },
+// ─── Warnings strip ───────────────────────────────────────────────────────────
+function Warnings({ items }) {
+  if (!items?.length) return null;
+  return (
+    <div style={{ marginTop:14, display:'flex', flexDirection:'column', gap:5 }}>
+      {items.map((w, i) => (
+        <div key={i} style={{ display:'flex', gap:8, padding:'8px 12px', background:'rgba(245,158,11,0.07)', border:`1px solid rgba(245,158,11,0.2)`, borderRadius:7, fontSize:11, color:'#fcd34d', lineHeight:1.5 }}>
+          <span style={{ flexShrink:0 }}>⚠</span>{w}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ─── Numerical result panel ───────────────────────────────────────────────────
+function NumericalPanel({ r }) {
+  const skewColor = s => {
+    if (!s) return C.text3;
+    const a = Math.abs(s);
+    if (a < 0.5) return C.green;
+    if (a < 1.0) return C.amber;
+    return C.red;
+  };
+
+  const grid1 = [
+    { label:'Mean',     value: fmtN(r.mean) },
+    { label:'Median',   value: fmtN(r.median) },
+    { label:'Mode',     value: fmtN(r.mode) },
+    { label:'Std Dev',  value: fmtN(r.std) },
+    { label:'Variance', value: fmtN(r.variance) },
+  ];
+  const grid2 = [
+    { label:'Min',   value: fmtN(r.min) },
+    { label:'Max',   value: fmtN(r.max) },
+    { label:'Range', value: fmtN(r.range) },
+    { label:'Q1',    value: fmtN(r.q1) },
+    { label:'Q3',    value: fmtN(r.q3) },
+    { label:'IQR',   value: fmtN(r.iqr) },
   ];
 
   return (
-    <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 12, overflow: 'hidden' }}>
-      {/* Header */}
-      <div style={{ padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <span style={{ fontWeight: 700, fontSize: 13, color: TEXT }}>{name}</span>
-        <span style={{ padding: '2px 7px', background: 'rgba(245,158,11,0.12)', border: `1px solid ${BORDERA}`, borderRadius: 4, fontSize: 9, color: AMBER2, fontFamily: 'monospace' }}>NUMERICAL</span>
-        {col.outlier_count > 0 && (
-          <span style={{ padding: '2px 7px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 4, fontSize: 9, color: '#fca5a5' }}>
-            {col.outlier_count} outlier{col.outlier_count > 1 ? 's' : ''}
-          </span>
-        )}
-        {col.missing > 0 && (
-          <span style={{ padding: '2px 7px', background: 'rgba(156,163,175,0.08)', border: '1px solid #1e2a3a', borderRadius: 4, fontSize: 9, color: TEXT3 }}>
-            {col.missing} missing
-          </span>
-        )}
-        <span style={{ marginLeft: 'auto', fontSize: 10, color: TEXT3 }}>{col.count?.toLocaleString()} values</span>
-      </div>
-
-      {/* Stats grid */}
-      <div style={{ padding: '10px 14px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 6, marginBottom: 10 }}>
-          {stats.map(s => (
-            <div key={s.label} style={{ background: CARD2, borderRadius: 6, padding: '7px 8px', textAlign: 'center' }}>
-              <div style={{ fontSize: 9, color: TEXT3, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>{s.label}</div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: TEXT }}>{s.value}</div>
-            </div>
-          ))}
+    <div>
+      {/* Error state */}
+      {r.error && (
+        <div style={{ padding:'12px 16px', background:'rgba(239,68,68,0.07)', border:'1px solid rgba(239,68,68,0.22)', borderRadius:8, color:'#fca5a5', fontSize:12, marginBottom:12 }}>
+          {r.error}
         </div>
+      )}
 
-        {/* Skewness */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: 10, color: TEXT3 }}>Skewness:</span>
-          <span style={{ fontSize: 11, fontWeight: 600, color: skewColor(col.skewness) }}>
-            {col.skewness !== null ? col.skewness?.toFixed(4) : '—'}
-          </span>
-          <span style={{ fontSize: 10, color: TEXT3 }}>({col.skewness_label})</span>
-          {col.kurtosis !== null && (
-            <>
-              <span style={{ fontSize: 10, color: '#374151', marginLeft: 8 }}>Kurtosis:</span>
-              <span style={{ fontSize: 11, color: TEXT2 }}>{col.kurtosis?.toFixed(4)}</span>
-            </>
-          )}
-          {col.negative_count > 0 && (
-            <span style={{ marginLeft: 8, padding: '2px 6px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', borderRadius: 4, fontSize: 9, color: '#fca5a5' }}>
-              {col.negative_count} negative
-            </span>
-          )}
-          {col.zeros > 0 && (
-            <span style={{ padding: '2px 6px', background: 'rgba(156,163,175,0.08)', border: `1px solid ${BORDER}`, borderRadius: 4, fontSize: 9, color: TEXT3 }}>
-              {col.zeros} zero{col.zeros > 1 ? 's' : ''}
-            </span>
-          )}
+      {/* Count / missing summary */}
+      <div style={{ display:'flex', gap:8, marginBottom:14, flexWrap:'wrap' }}>
+        <div style={{ padding:'6px 14px', background: C.surface2, border:`1px solid ${C.border}`, borderRadius:7, fontSize:11, color: C.text2 }}>
+          <span style={{ color: C.text3 }}>Valid values: </span>
+          <strong style={{ color: C.text }}>{r.count?.toLocaleString()}</strong>
         </div>
-
-        {/* Missing rate bar */}
-        {col.missing_pct !== undefined && (
-          <div style={{ marginBottom: 8 }}>
-            <span style={{ fontSize: 9, color: TEXT3, marginRight: 6 }}>Missing rate:</span>
-            <MissingBar pct={col.missing_pct} />
+        <div style={{ padding:'6px 14px', background: C.surface2, border:`1px solid ${r.missing > 0 ? 'rgba(245,158,11,0.3)' : C.border}`, borderRadius:7, fontSize:11 }}>
+          <span style={{ color: C.text3 }}>Missing: </span>
+          <strong style={{ color: r.missing > 0 ? C.amber2 : C.green }}>{r.missing} ({r.missing_pct}%)</strong>
+        </div>
+        {r.outlier_count > 0 && (
+          <div style={{ padding:'6px 14px', background:'rgba(239,68,68,0.06)', border:'1px solid rgba(239,68,68,0.25)', borderRadius:7, fontSize:11 }}>
+            <span style={{ color: C.text3 }}>Outliers (IQR): </span>
+            <strong style={{ color:'#fca5a5' }}>{r.outlier_count} ({r.outlier_pct}%)</strong>
           </div>
         )}
+      </div>
 
-        {/* Normality */}
-        {col.normality && (
-          <div style={{ fontSize: 10, color: TEXT3 }}>
-            Normality test (Shapiro-Wilk): p = {col.normality.p_value} →{' '}
-            <span style={{ color: col.normality.is_normal ? '#10b981' : '#f87171' }}>
-              {col.normality.is_normal ? 'normal distribution' : 'not normal'}
-            </span>
+      {/* Central tendency row */}
+      <div style={{ marginBottom:6, fontSize:10, color: C.text3, textTransform:'uppercase', letterSpacing:0.8 }}>Central tendency &amp; spread</div>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:6, marginBottom:12 }}>
+        {grid1.map(s => <StatCard key={s.label} {...s} />)}
+      </div>
+
+      {/* Range / quartiles row */}
+      <div style={{ marginBottom:6, fontSize:10, color: C.text3, textTransform:'uppercase', letterSpacing:0.8 }}>Range &amp; quartiles</div>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(6, 1fr)', gap:6, marginBottom:14 }}>
+        {grid2.map(s => <StatCard key={s.label} {...s} />)}
+      </div>
+
+      {/* Skewness + kurtosis */}
+      <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:14 }}>
+        <div style={{ padding:'8px 14px', background: C.surface2, border:`1px solid ${C.border}`, borderRadius:8, display:'flex', gap:10, alignItems:'center' }}>
+          <span style={{ fontSize:10, color: C.text3 }}>Skewness</span>
+          <span style={{ fontSize:15, fontWeight:700, color: skewColor(r.skewness) }}>{r.skewness ?? '—'}</span>
+          <span style={{ fontSize:10, color: C.text3 }}>({r.skewness_label})</span>
+        </div>
+        {r.kurtosis !== null && r.kurtosis !== undefined && (
+          <div style={{ padding:'8px 14px', background: C.surface2, border:`1px solid ${C.border}`, borderRadius:8, display:'flex', gap:10, alignItems:'center' }}>
+            <span style={{ fontSize:10, color: C.text3 }}>Kurtosis</span>
+            <span style={{ fontSize:15, fontWeight:700, color: C.text2 }}>{r.kurtosis}</span>
           </div>
         )}
-
-        {/* Box-plot */}
-        <BoxPlot col={col} />
       </div>
+
+      {/* Normality test */}
+      {r.normality && (
+        <div style={{ padding:'10px 14px', background: r.normality.is_normal ? 'rgba(16,185,129,0.07)' : 'rgba(239,68,68,0.07)', border:`1px solid ${r.normality.is_normal ? 'rgba(16,185,129,0.25)' : 'rgba(239,68,68,0.25)'}`, borderRadius:8, marginBottom:14 }}>
+          <div style={{ fontSize:10, color: C.text3, marginBottom:3, textTransform:'uppercase', letterSpacing:0.8 }}>Shapiro-Wilk Normality Test</div>
+          <div style={{ display:'flex', gap:14, flexWrap:'wrap', fontSize:12 }}>
+            <span style={{ color: C.text2 }}>W = <strong style={{ color: C.text }}>{r.normality.statistic}</strong></span>
+            <span style={{ color: C.text2 }}>p = <strong style={{ color: C.text }}>{r.normality.p_value}</strong></span>
+            <span style={{ fontWeight:700, color: r.normality.is_normal ? C.green : C.red }}>{r.normality.interpretation}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Box plot */}
+      <BoxPlot r={r} />
+
+      {/* Warnings */}
+      <Warnings items={r.warnings} />
     </div>
   );
 }
 
-function CategoricalCard({ name, col }) {
-  const topVals = Object.entries(col.top_values || {});
-  const topPcts = col.top_values_pct || {};
+// ─── Categorical result panel ─────────────────────────────────────────────────
+function CategoricalPanel({ r }) {
+  const topVals = Object.entries(r.top_values || {});
+  const topPcts = r.top_values_pct || {};
   const maxCount = topVals.length ? Math.max(...topVals.map(([, v]) => v)) : 1;
 
   return (
-    <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 12, overflow: 'hidden' }}>
-      {/* Header */}
-      <div style={{ padding: '10px 14px', borderBottom: `1px solid ${BORDER}`, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-        <span style={{ fontWeight: 700, fontSize: 13, color: TEXT }}>{name}</span>
-        <span style={{ padding: '2px 7px', background: 'rgba(139,92,246,0.12)', border: '1px solid rgba(139,92,246,0.3)', borderRadius: 4, fontSize: 9, color: '#c4b5fd', fontFamily: 'monospace' }}>CATEGORICAL</span>
-        {col.missing > 0 && (
-          <span style={{ padding: '2px 7px', background: 'rgba(156,163,175,0.08)', border: `1px solid ${BORDER}`, borderRadius: 4, fontSize: 9, color: TEXT3 }}>
-            {col.missing} missing
-          </span>
-        )}
-        <span style={{ marginLeft: 'auto', fontSize: 10, color: TEXT3 }}>{col.count?.toLocaleString()} values</span>
-      </div>
-
-      <div style={{ padding: '10px 14px' }}>
-        {/* Key stats row */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginBottom: 12 }}>
-          {[
-            { label: 'Unique', value: col.unique_values?.toLocaleString() },
-            { label: 'Mode', value: col.mode ? (col.mode.length > 12 ? col.mode.slice(0, 12) + '…' : col.mode) : '—' },
-            { label: 'Mode %', value: col.mode_frequency != null ? col.mode_frequency + '%' : '—' },
-          ].map(s => (
-            <div key={s.label} style={{ background: CARD2, borderRadius: 6, padding: '7px 8px', textAlign: 'center' }}>
-              <div style={{ fontSize: 9, color: TEXT3, marginBottom: 3, textTransform: 'uppercase', letterSpacing: 0.5 }}>{s.label}</div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: TEXT }}>{s.value}</div>
-            </div>
-          ))}
+    <div>
+      {r.error && (
+        <div style={{ padding:'12px 16px', background:'rgba(239,68,68,0.07)', border:'1px solid rgba(239,68,68,0.22)', borderRadius:8, color:'#fca5a5', fontSize:12, marginBottom:12 }}>
+          {r.error}
         </div>
+      )}
 
-        {/* Missing bar */}
-        {col.missing_pct !== undefined && col.missing_pct > 0 && (
-          <div style={{ marginBottom: 10 }}>
-            <span style={{ fontSize: 9, color: TEXT3, marginRight: 6 }}>Missing rate:</span>
-            <MissingBar pct={col.missing_pct} />
-          </div>
-        )}
-
-        {/* Top values */}
-        <div style={{ fontSize: 9, color: TEXT3, textTransform: 'uppercase', letterSpacing: 0.8, marginBottom: 6 }}>
-          Top {topVals.length} values
-        </div>
-        {topVals.map(([label, count], i) => {
-          const pct = topPcts[label] || 0;
-          const barW = (count / maxCount * 100).toFixed(1);
-          return (
-            <div key={label} style={{ marginBottom: 5 }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
-                <span style={{ fontSize: 11, color: TEXT2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '60%' }} title={label}>{label}</span>
-                <span style={{ fontSize: 10, color: TEXT3, flexShrink: 0 }}>{count.toLocaleString()} · {pct}%</span>
-              </div>
-              <div style={{ height: 5, background: '#1e2a3a', borderRadius: 3 }}>
-                <div style={{ width: `${barW}%`, height: '100%', background: `rgba(139,92,246,${0.3 + 0.5 * (1 - i / topVals.length)})`, borderRadius: 3 }} />
-              </div>
-            </div>
-          );
-        })}
-
-        {/* Entropy / cardinality */}
-        <div style={{ marginTop: 10, display: 'flex', gap: 12, fontSize: 10, color: TEXT3 }}>
-          {col.entropy !== null && <span>Entropy: <strong style={{ color: TEXT2 }}>{col.entropy?.toFixed(3)} bits</strong></span>}
-          {col.cardinality_ratio !== null && <span>Cardinality: <strong style={{ color: TEXT2 }}>{col.cardinality_ratio?.toFixed(1)}%</strong></span>}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function CorrelationMatrix({ matrix }) {
-  const keys = Object.keys(matrix);
-  if (keys.length < 2) return null;
-
-  const cellSize = Math.max(52, Math.min(80, Math.floor(600 / keys.length)));
-  const headerStyle = { padding: `4px 6px`, fontSize: 10, color: TEXT2, textAlign: 'right', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: cellSize, fontWeight: 600 };
-  const colHeaderStyle = { ...headerStyle, textAlign: 'center', writingMode: 'vertical-rl', transform: 'rotate(180deg)', maxHeight: 100, verticalAlign: 'bottom' };
-
-  return (
-    <div style={{ marginTop: 24 }}>
-      <h3 style={{ fontSize: 13, fontWeight: 700, color: AMBER2, margin: '0 0 12px', textTransform: 'uppercase', letterSpacing: 1 }}>
-        🔗 Correlation Matrix
-        <span style={{ fontSize: 10, color: TEXT3, fontWeight: 400, textTransform: 'none', marginLeft: 10 }}>Pearson · numerical columns only</span>
-      </h3>
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ borderCollapse: 'separate', borderSpacing: 3 }}>
-          <thead>
-            <tr>
-              <th style={{ width: cellSize, minWidth: cellSize }} />
-              {keys.map(k => <th key={k} style={{ ...colHeaderStyle, width: cellSize, minWidth: cellSize }} title={k}>{k}</th>)}
-            </tr>
-          </thead>
-          <tbody>
-            {keys.map(row => (
-              <tr key={row}>
-                <td style={headerStyle} title={row}>{row.length > 14 ? row.slice(0, 13) + '…' : row}</td>
-                {keys.map(col => {
-                  const v = matrix[row]?.[col];
-                  const isDiag = row === col;
-                  return (
-                    <td key={col} title={`${row} vs ${col}: ${v}`} style={{
-                      width: cellSize, height: cellSize, textAlign: 'center',
-                      background: isDiag ? 'rgba(245,158,11,0.15)' : corrColor(v),
-                      borderRadius: 6, fontSize: 11, fontWeight: isDiag ? 700 : 400,
-                      color: isDiag ? AMBER2 : (Math.abs(v || 0) > 0.3 ? '#f0f0f0' : TEXT3),
-                      cursor: 'default',
-                    }}>
-                      {v !== null && v !== undefined ? v.toFixed(2) : '—'}
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-      {/* Legend */}
-      <div style={{ display: 'flex', gap: 10, marginTop: 10, flexWrap: 'wrap' }}>
+      {/* Summary row */}
+      <div style={{ display:'flex', gap:8, marginBottom:16, flexWrap:'wrap' }}>
         {[
-          { color: 'rgba(16,185,129,0.75)', label: 'Strong positive (≥0.7)' },
-          { color: 'rgba(16,185,129,0.40)', label: 'Moderate positive (0.4–0.7)' },
-          { color: 'rgba(14,22,40,0.6)',    label: 'Weak / no correlation' },
-          { color: 'rgba(239,68,68,0.38)',  label: 'Moderate negative' },
-          { color: 'rgba(239,68,68,0.70)',  label: 'Strong negative (≤-0.7)' },
-        ].map(item => (
-          <div key={item.label} style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-            <div style={{ width: 14, height: 14, borderRadius: 3, background: item.color, border: `1px solid ${BORDER}` }} />
-            <span style={{ fontSize: 10, color: TEXT3 }}>{item.label}</span>
+          { label:'Total rows',   value: r.total?.toLocaleString() },
+          { label:'Non-null',     value: r.count?.toLocaleString() },
+          { label:'Missing',      value: `${r.missing} (${r.missing_pct}%)`, color: r.missing > 0 ? C.amber2 : C.green },
+          { label:'Unique values',value: r.unique_count?.toLocaleString() },
+          { label:'Cardinality',  value: `${r.cardinality_pct}%` },
+        ].map(s => (
+          <div key={s.label} style={{ padding:'8px 14px', background: C.surface2, border:`1px solid ${C.border}`, borderRadius:8, minWidth:100 }}>
+            <div style={{ fontSize:9, color: C.text3, textTransform:'uppercase', letterSpacing:0.8, marginBottom:4 }}>{s.label}</div>
+            <div style={{ fontSize:14, fontWeight:700, color: s.color || C.text }}>{s.value}</div>
           </div>
         ))}
       </div>
-    </div>
-  );
-}
 
-function MissingHeatmap({ summary }) {
-  const cols = Object.entries(summary.missing_per_column || {}).filter(([, v]) => v > 0);
-  if (!cols.length) return (
-    <div style={{ padding: '10px 0', fontSize: 12, color: '#10b981' }}>✓ No missing values in any column</div>
-  );
-  const maxMissing = Math.max(...cols.map(([, v]) => v));
-  return (
-    <div style={{ marginTop: 16 }}>
-      <div style={{ fontSize: 11, color: TEXT2, marginBottom: 8 }}>{cols.length} column{cols.length > 1 ? 's' : ''} with missing values:</div>
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
-        {cols.sort(([, a], [, b]) => b - a).map(([col, count]) => {
-          const pct = (count / summary.total_rows * 100).toFixed(1);
-          const intensity = count / maxMissing;
-          return (
-            <div key={col} style={{ padding: '5px 10px', borderRadius: 6, background: `rgba(239,68,68,${0.08 + intensity * 0.35})`, border: `1px solid rgba(239,68,68,${0.15 + intensity * 0.4})`, fontSize: 10, color: TEXT2 }}>
-              <span style={{ color: TEXT }}>{col}</span> — {count.toLocaleString()} ({pct}%)
-            </div>
-          );
-        })}
+      {/* Mode */}
+      <div style={{ padding:'10px 14px', background: C.surface2, border:`1px solid ${C.border}`, borderRadius:8, marginBottom:16, display:'flex', gap:14, alignItems:'center', flexWrap:'wrap' }}>
+        <span style={{ fontSize:10, color: C.text3, textTransform:'uppercase', letterSpacing:0.8 }}>Mode</span>
+        <span style={{ fontSize:14, fontWeight:700, color: C.amber2 }}>{r.mode || '—'}</span>
+        {r.mode && (
+          <span style={{ fontSize:11, color: C.text3 }}>appears <strong style={{ color: C.text2 }}>{r.mode_count?.toLocaleString()}</strong> times ({r.mode_pct}% of non-null)</span>
+        )}
       </div>
+
+      {/* Top values chart */}
+      {topVals.length > 0 && (
+        <div>
+          <div style={{ fontSize:10, color: C.text3, textTransform:'uppercase', letterSpacing:0.8, marginBottom:8 }}>
+            Top {topVals.length} most frequent values
+          </div>
+          <div style={{ display:'flex', flexDirection:'column', gap:6 }}>
+            {topVals.map(([label, count], i) => {
+              const pct  = topPcts[label] || 0;
+              const barW = (count / maxCount * 100).toFixed(1);
+              const alpha = 0.6 - i * 0.05;
+              return (
+                <div key={label}>
+                  <div style={{ display:'flex', justifyContent:'space-between', marginBottom:3 }}>
+                    <span style={{ fontSize:12, color: C.text2, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', maxWidth:'65%' }} title={label}>{label}</span>
+                    <span style={{ fontSize:11, color: C.text3, flexShrink:0 }}>{count.toLocaleString()} · {pct}%</span>
+                  </div>
+                  <div style={{ height:7, background:'#1e2a3a', borderRadius:4 }}>
+                    <div style={{ width:`${barW}%`, height:'100%', background:`rgba(139,92,246,${alpha})`, borderRadius:4, transition:'width 0.4s ease' }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <Warnings items={r.warnings} />
     </div>
   );
 }
 
-// ─── Main App ────────────────────────────────────────────────────────────────
-
+// ─── Main App ─────────────────────────────────────────────────────────────────
 export default function StatAnalyzerApp() {
-  const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-  const [dragOver, setDragOver] = useState(false);
-  const [fileName, setFileName] = useState('');
-  const [search, setSearch] = useState('');
-  const [typeFilter, setTypeFilter] = useState('all'); // all | numerical | categorical
+  // Upload state
+  const [fileId,    setFileId]    = useState(null);
+  const [columns,   setColumns]   = useState([]);   // [{name, type}]
+  const [fileMeta,  setFileMeta]  = useState(null); // {row_count, col_count, filename}
+  const [uploading, setUploading] = useState(false);
+  const [uploadErr, setUploadErr] = useState('');
 
+  // Selection state
+  const [typeFilter, setTypeFilter] = useState('all');
+  const [selectedCol, setSelectedCol] = useState('');
+
+  // Analysis state
+  const [result,    setResult]   = useState(null);
+  const [analyzing, setAnalyzing] = useState(false);
+  const [analyzeErr, setAnalyzeErr] = useState('');
+
+  const [dragOver, setDragOver] = useState(false);
+
+  // ── Derived: filtered column list ──────────────────────────────────────────
+  const filteredCols = useMemo(() => {
+    if (typeFilter === 'all') return columns;
+    return columns.filter(c => c.type === typeFilter);
+  }, [columns, typeFilter]);
+
+  const counts = useMemo(() => ({
+    all:         columns.length,
+    numerical:   columns.filter(c => c.type === 'numerical').length,
+    categorical: columns.filter(c => c.type === 'categorical').length,
+    date:        columns.filter(c => c.type === 'date').length,
+  }), [columns]);
+
+  // ── File upload handler ─────────────────────────────────────────────────────
   const handleFile = useCallback(async (file) => {
-    if (!file.name.endsWith('.csv')) { setError('Please upload a CSV file.'); return; }
-    setFileName(file.name);
-    setLoading(true);
-    setError('');
+    const ext = file.name.split('.').pop().toLowerCase();
+    if (!['csv','xlsx','xls'].includes(ext)) {
+      setUploadErr('Please upload a .csv, .xlsx, or .xls file.');
+      return;
+    }
+    setUploading(true);
+    setUploadErr('');
     setResult(null);
+    setSelectedCol('');
+    setColumns([]);
+    setFileId(null);
     try {
-      const data = await analyzeFile(file);
-      setResult(data);
+      const data = await statUpload(file);
+      setFileId(data.file_id);
+      setColumns(data.columns);
+      setFileMeta({ row_count: data.row_count, col_count: data.col_count, filename: file.name });
     } catch (e) {
-      setError(e.message);
+      setUploadErr(e.message);
     } finally {
-      setLoading(false);
+      setUploading(false);
     }
   }, []);
 
@@ -397,120 +333,197 @@ export default function StatAnalyzerApp() {
     if (f) handleFile(f);
   };
 
-  const summary = result?.dataset_summary;
-  const columns = result?.columns || {};
-  const corrMatrix = result?.correlation_matrix || {};
+  // ── Analyze selected column ─────────────────────────────────────────────────
+  const handleAnalyze = async () => {
+    if (!fileId || !selectedCol) return;
+    setAnalyzing(true);
+    setAnalyzeErr('');
+    setResult(null);
+    try {
+      const data = await statAnalyzeColumn(fileId, selectedCol);
+      setResult(data);
+    } catch (e) {
+      setAnalyzeErr(e.message);
+    } finally {
+      setAnalyzing(false);
+    }
+  };
 
-  const filteredCols = Object.entries(columns).filter(([name, col]) => {
-    if (search && !name.toLowerCase().includes(search.toLowerCase())) return false;
-    if (typeFilter !== 'all' && col.type !== typeFilter) return false;
-    return true;
-  });
+  // When filter changes, clear selected column if it no longer appears in filtered list
+  const handleFilterChange = tab => {
+    setTypeFilter(tab);
+    setResult(null);
+    setAnalyzeErr('');
+    const newFiltered = tab === 'all' ? columns : columns.filter(c => c.type === tab);
+    if (!newFiltered.find(c => c.name === selectedCol)) setSelectedCol('');
+  };
 
-  const numCount  = Object.values(columns).filter(c => c.type === 'numerical').length;
-  const catCount  = Object.values(columns).filter(c => c.type === 'categorical').length;
+  // ── Render ──────────────────────────────────────────────────────────────────
+  const hasFile = !!fileId;
+  const canAnalyze = hasFile && !!selectedCol && !analyzing;
 
   return (
-    <div style={{ minHeight: 'calc(100vh - 52px)', background: DARK, color: TEXT, fontFamily: "'Syne', sans-serif" }}>
-      <div style={{ maxWidth: 1280, margin: '0 auto', padding: '24px 20px' }}>
+    <div style={{ minHeight:'calc(100vh - 52px)', background: C.bg, color: C.text, fontFamily:"'Syne',sans-serif" }}>
+      <div style={{ maxWidth:960, margin:'0 auto', padding:'28px 20px' }}>
 
-        {/* Page title */}
-        <div style={{ marginBottom: 20 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 800, color: AMBER2, margin: '0 0 4px', display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ fontSize: 26 }}>📐</span> Statistical Analyzer
+        {/* ── Page header ──────────────────────────────────────────────── */}
+        <div style={{ marginBottom:24 }}>
+          <h1 style={{ fontSize:22, fontWeight:800, color: C.amber2, margin:'0 0 6px', display:'flex', alignItems:'center', gap:10 }}>
+            <span style={{ fontSize:26 }}>📐</span> Statistical Analyzer
           </h1>
-          <p style={{ fontSize: 13, color: TEXT3, margin: 0 }}>
-            Upload a CSV to get per-column statistics, distribution shapes, outlier counts, missing-value analysis and a full correlation matrix.
+          <p style={{ fontSize:13, color: C.text3, margin:0 }}>
+            Upload a CSV or Excel file, pick a column, and click Analyze — stats are computed on demand.
           </p>
         </div>
 
-        {/* Upload zone */}
+        {/* ── Upload zone ──────────────────────────────────────────────── */}
         <div
           onDragOver={e => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={() => setDragOver(false)}
           onDrop={handleDrop}
-          onClick={() => document.getElementById('stat-file-input').click()}
-          style={{ border: `2px dashed ${dragOver ? AMBER : BORDERA}`, borderRadius: 14, padding: '28px 24px', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, cursor: 'pointer', background: dragOver ? `rgba(245,158,11,0.04)` : CARD, transition: 'all 0.2s', marginBottom: 20 }}>
-          <span style={{ fontSize: 32 }}>📂</span>
-          <span style={{ fontSize: 14, color: TEXT2 }}>{fileName ? `Loaded: ${fileName}` : 'Drop a CSV here or click to browse'}</span>
-          <span style={{ fontSize: 11, color: TEXT3 }}>Supports any CSV with headers in the first row</span>
-          <input id="stat-file-input" type="file" accept=".csv" style={{ display: 'none' }} onChange={e => e.target.files[0] && handleFile(e.target.files[0])} />
+          onClick={() => document.getElementById('sa-file-input').click()}
+          style={{ border:`2px dashed ${dragOver ? C.amber : C.borderA}`, borderRadius:14, padding:'22px 24px', display:'flex', alignItems:'center', gap:16, cursor:'pointer', background: dragOver ? 'rgba(245,158,11,0.04)' : C.surface, transition:'all 0.2s', marginBottom:20 }}>
+          <span style={{ fontSize:28, flexShrink:0 }}>📂</span>
+          <div>
+            {fileMeta ? (
+              <>
+                <div style={{ fontSize:13, fontWeight:600, color: C.amber2 }}>📄 {fileMeta.filename}</div>
+                <div style={{ fontSize:11, color: C.text3, marginTop:2 }}>
+                  {fileMeta.row_count.toLocaleString()} rows · {fileMeta.col_count} columns — click to replace
+                </div>
+              </>
+            ) : (
+              <>
+                <div style={{ fontSize:13, color: C.text2 }}>Drop a file here or click to browse</div>
+                <div style={{ fontSize:11, color: C.text3, marginTop:2 }}>Supports .csv · .xlsx · .xls</div>
+              </>
+            )}
+          </div>
+          {uploading && <span style={{ marginLeft:'auto', fontSize:12, color: C.amber, animation:'pulse 1s infinite' }}>Uploading…</span>}
+          <input id="sa-file-input" type="file" accept=".csv,.xlsx,.xls" style={{ display:'none' }} onChange={e => e.target.files[0] && handleFile(e.target.files[0])} />
         </div>
+        <style>{`@keyframes pulse{0%,100%{opacity:0.5}50%{opacity:1}}`}</style>
 
-        {/* Loading */}
-        {loading && (
-          <div style={{ textAlign: 'center', padding: 48, color: AMBER }}>
-            <div style={{ fontSize: 32, marginBottom: 12, animation: 'spin 1s linear infinite' }}>⟳</div>
-            <style>{`@keyframes spin { to { transform: rotate(360deg); } }`}</style>
-            <p style={{ fontSize: 14, margin: 0 }}>Analysing dataset…</p>
-          </div>
+        {uploadErr && (
+          <div style={{ padding:'10px 14px', background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.25)', borderRadius:8, color:'#fca5a5', fontSize:12, marginBottom:16 }}>⚠ {uploadErr}</div>
         )}
 
-        {/* Error */}
-        {error && !loading && (
-          <div style={{ padding: '14px 18px', background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 10, color: '#fca5a5', fontSize: 13, marginBottom: 20 }}>
-            ⚠ {error}
-          </div>
-        )}
+        {/* ── Column selector (shown after upload) ──────────────────────── */}
+        {hasFile && (
+          <div style={{ background: C.surface, border:`1px solid ${C.borderA}`, borderRadius:14, padding:'18px 20px', marginBottom:20 }}>
 
-        {/* Results */}
-        {result && !loading && (
-          <>
-            {/* ── Dataset summary pills ── */}
-            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 24 }}>
-              <StatPill label="Total Rows"   value={summary.total_rows?.toLocaleString()} />
-              <StatPill label="Columns"      value={summary.total_columns} sub={`${numCount} num · ${catCount} cat`} />
-              <StatPill label="Duplicate Rows" value={summary.duplicate_rows?.toLocaleString()} color={summary.duplicate_rows > 0 ? '#fca5a5' : '#10b981'} />
-              <StatPill label="Missing Cells" value={`${summary.missing_rate_pct}%`} color={summary.missing_rate_pct > 10 ? '#fca5a5' : summary.missing_rate_pct > 0 ? AMBER : '#10b981'} sub={`${summary.total_missing_cells?.toLocaleString()} cells`} />
-              <StatPill label="Complete Rows" value={summary.complete_rows?.toLocaleString()} color="#10b981" sub={`${((summary.complete_rows / summary.total_rows) * 100).toFixed(1)}%`} />
-              <StatPill label="Memory" value={`${summary.memory_usage_kb} KB`} color={TEXT2} />
-            </div>
-
-            {/* Missing heatmap */}
-            <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 12, padding: '14px 18px', marginBottom: 24 }}>
-              <h3 style={{ fontSize: 12, fontWeight: 700, color: AMBER, margin: '0 0 2px', textTransform: 'uppercase', letterSpacing: 1 }}>Missing Values</h3>
-              <MissingHeatmap summary={summary} />
-            </div>
-
-            {/* Column filter controls */}
-            <div style={{ display: 'flex', gap: 10, marginBottom: 14, alignItems: 'center', flexWrap: 'wrap' }}>
-              <input
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-                placeholder="Search columns…"
-                style={{ padding: '7px 12px', background: CARD, border: `1px solid ${BORDER}`, borderRadius: 8, color: TEXT, fontSize: 12, outline: 'none', width: 220 }}
-              />
-              {['all', 'numerical', 'categorical'].map(f => (
-                <button key={f} onClick={() => setTypeFilter(f)} style={{ padding: '6px 14px', borderRadius: 8, border: `1px solid ${typeFilter === f ? BORDERA : BORDER}`, background: typeFilter === f ? 'rgba(245,158,11,0.1)' : 'transparent', color: typeFilter === f ? AMBER2 : TEXT3, fontSize: 11, cursor: 'pointer', textTransform: 'capitalize', fontFamily: "'Syne', sans-serif" }}>
-                  {f === 'all' ? `All (${Object.keys(columns).length})` : f === 'numerical' ? `Numerical (${numCount})` : `Categorical (${catCount})`}
+            {/* Filter tabs */}
+            <div style={{ display:'flex', gap:2, marginBottom:14, flexWrap:'wrap' }}>
+              {[
+                { key:'all',         label:`All (${counts.all})` },
+                { key:'numerical',   label:`Numerical (${counts.numerical})` },
+                { key:'categorical', label:`Categorical (${counts.categorical})` },
+                ...(counts.date > 0 ? [{ key:'date', label:`Date (${counts.date})` }] : []),
+              ].map(tab => (
+                <button key={tab.key} onClick={() => handleFilterChange(tab.key)}
+                  style={{ padding:'6px 14px', borderRadius:8, border:'none', cursor:'pointer', fontSize:12, fontWeight:600, fontFamily:"'Syne',sans-serif", transition:'all 0.15s',
+                    background: typeFilter === tab.key ? `rgba(245,158,11,0.15)` : 'transparent',
+                    color:      typeFilter === tab.key ? C.amber2 : C.text3,
+                    borderBottom: typeFilter === tab.key ? `2px solid ${C.amber}` : '2px solid transparent',
+                  }}>
+                  {tab.label}
                 </button>
               ))}
-              <span style={{ fontSize: 11, color: TEXT3, marginLeft: 'auto' }}>Showing {filteredCols.length} of {Object.keys(columns).length} columns</span>
             </div>
 
-            {/* Column cards grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(480px, 1fr))', gap: 14 }}>
-              {filteredCols.map(([name, col]) => (
-                col.type === 'numerical'
-                  ? <NumericalCard key={name} name={name} col={col} />
-                  : <CategoricalCard key={name} name={name} col={col} />
+            {/* Dropdown + Analyze button */}
+            <div style={{ display:'flex', gap:10, alignItems:'center', flexWrap:'wrap' }}>
+              <div style={{ flex:1, minWidth:220 }}>
+                <label style={{ fontSize:10, color: C.text3, textTransform:'uppercase', letterSpacing:0.8, display:'block', marginBottom:5 }}>
+                  Select column to analyze
+                </label>
+                <select
+                  value={selectedCol}
+                  onChange={e => { setSelectedCol(e.target.value); setResult(null); setAnalyzeErr(''); }}
+                  style={{ width:'100%', padding:'9px 12px', background:'#111827', border:`1px solid ${selectedCol ? C.borderA : C.border}`, borderRadius:8, color: selectedCol ? C.text : C.text3, fontSize:13, cursor:'pointer', outline:'none', fontFamily:"'Syne',sans-serif" }}>
+                  <option value="">— choose a column —</option>
+                  {filteredCols.map(col => (
+                    <option key={col.name} value={col.name}>
+                      {col.name}  ({col.type})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                onClick={handleAnalyze}
+                disabled={!canAnalyze}
+                style={{ padding:'10px 28px', borderRadius:10, border:'none', background: canAnalyze ? 'linear-gradient(135deg,#92400e,#f59e0b)' : '#1e2a3a', color: canAnalyze ? '#fff' : C.text3, fontSize:13, fontWeight:700, cursor: canAnalyze ? 'pointer' : 'not-allowed', fontFamily:"'Syne',sans-serif", transition:'all 0.15s', flexShrink:0, marginTop:20 }}>
+                {analyzing ? '⟳ Analyzing…' : '▶ Analyze'}
+              </button>
+            </div>
+
+            {/* Column type legend */}
+            <div style={{ display:'flex', gap:14, marginTop:12, flexWrap:'wrap' }}>
+              {[['numerical', C.amber, '123'], ['categorical', C.purple, 'Aa'], ['date', C.green, '📅']].map(([t, color, icon]) => (
+                <div key={t} style={{ display:'flex', alignItems:'center', gap:5, fontSize:10, color: C.text3 }}>
+                  <span style={{ padding:'1px 5px', background:`${color}18`, border:`1px solid ${color}44`, borderRadius:3, fontFamily:'monospace', color, fontSize:9 }}>{icon}</span>
+                  {t.charAt(0).toUpperCase() + t.slice(1)}
+                </div>
               ))}
             </div>
-
-            {filteredCols.length === 0 && (
-              <div style={{ textAlign: 'center', padding: 48, color: TEXT3 }}>
-                No columns match the current filter.
-              </div>
-            )}
-
-            {/* Correlation matrix */}
-            {Object.keys(corrMatrix).length >= 2 && (
-              <div style={{ background: CARD, border: `1px solid ${BORDER}`, borderRadius: 12, padding: '16px 18px', marginTop: 24 }}>
-                <CorrelationMatrix matrix={corrMatrix} />
-              </div>
-            )}
-          </>
+          </div>
         )}
+
+        {/* ── Analyze error ─────────────────────────────────────────────── */}
+        {analyzeErr && (
+          <div style={{ padding:'10px 14px', background:'rgba(239,68,68,0.08)', border:'1px solid rgba(239,68,68,0.25)', borderRadius:8, color:'#fca5a5', fontSize:12, marginBottom:16 }}>⚠ {analyzeErr}</div>
+        )}
+
+        {/* ── Analyzing spinner ─────────────────────────────────────────── */}
+        {analyzing && (
+          <div style={{ textAlign:'center', padding:40, color: C.amber }}>
+            <div style={{ fontSize:30, animation:'spin 0.9s linear infinite' }}>⟳</div>
+            <style>{`@keyframes spin{to{transform:rotate(360deg)}}`}</style>
+            <p style={{ fontSize:13, margin:'10px 0 0', color: C.text3 }}>Analyzing <strong style={{ color: C.amber2 }}>{selectedCol}</strong>…</p>
+          </div>
+        )}
+
+        {/* ── Results panel ─────────────────────────────────────────────── */}
+        {result && !analyzing && (
+          <div style={{ background: C.surface, border:`1px solid ${C.borderA}`, borderRadius:14, overflow:'hidden' }}>
+            {/* Result header */}
+            <div style={{ padding:'14px 20px', borderBottom:`1px solid ${C.border}`, display:'flex', alignItems:'center', gap:10, flexWrap:'wrap' }}>
+              <span style={{ fontSize:16, fontWeight:800, color: C.text }}>{result.column}</span>
+              <TypeBadge type={result.type} />
+              {result.count !== undefined && (
+                <span style={{ fontSize:11, color: C.text3, marginLeft:'auto' }}>{result.count?.toLocaleString()} valid values</span>
+              )}
+            </div>
+            <div style={{ padding:'18px 20px' }}>
+              {result.type === 'numerical'
+                ? <NumericalPanel r={result} />
+                : <CategoricalPanel r={result} />
+              }
+            </div>
+          </div>
+        )}
+
+        {/* ── Empty state (file loaded, no analysis yet) ────────────────── */}
+        {hasFile && !result && !analyzing && !analyzeErr && (
+          <div style={{ textAlign:'center', padding:'48px 24px', color: C.text3 }}>
+            <div style={{ fontSize:40, marginBottom:12, opacity:0.4 }}>📐</div>
+            <p style={{ fontSize:13, margin:0 }}>Select a column and click <strong style={{ color: C.amber2 }}>Analyze</strong> to see the statistical profile.</p>
+          </div>
+        )}
+
+        {/* ── Initial empty state ──────────────────────────────────────── */}
+        {!hasFile && !uploading && (
+          <div style={{ textAlign:'center', padding:'48px 24px', color: C.text3 }}>
+            <div style={{ fontSize:48, marginBottom:14, opacity:0.35 }}>📐</div>
+            <p style={{ fontSize:14, color: C.text3, margin:'0 0 6px' }}>Upload a file to get started</p>
+            <p style={{ fontSize:12, margin:0, lineHeight:1.7 }}>
+              Numerical columns: mean · median · std · quartiles · IQR · skewness · outliers · normality<br/>
+              Categorical columns: unique count · mode · top-10 frequency bars · cardinality
+            </p>
+          </div>
+        )}
+
       </div>
     </div>
   );

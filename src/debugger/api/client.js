@@ -34,6 +34,32 @@ export async function analyzeFile(file) {
   return cleanerReq('/analyze', form);
 }
 
+// ── Statistical Analyzer (new per-column flow) ────────────────────────────
+
+export async function statUpload(file) {
+  const form = new FormData(); form.append('file', file);
+  return cleanerReq('/analyzer/upload', form);
+}
+
+export async function statAnalyzeColumn(fileId, column) {
+  let res;
+  try {
+    res = await fetch(CLEANER + '/analyzer/analyze-column', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ file_id: fileId, column }),
+    });
+  } catch {
+    throw new Error('Cannot reach the cleaning agent. Make sure it is running.');
+  }
+  if (!res.ok) {
+    const ct = res.headers.get('content-type') || '';
+    if (ct.includes('application/json')) { const b = await res.json(); throw new Error(b.detail || 'Analysis error'); }
+    throw new Error('Analysis error ' + res.status);
+  }
+  return res.json();
+}
+
 async function req(path, options = {}) {
   let res;
   try {
