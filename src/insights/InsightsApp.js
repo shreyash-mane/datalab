@@ -21,7 +21,7 @@ const TYPE_META = {
   data_quality:           { icon: '⚠️', label: 'Data Quality', color: '#ef4444' },
 };
 
-const STRENGTH_COLOR = { strong:'#10b981', high:'#ef4444', moderate:'#f59e0b', weak:'#6b7a9a', info:'#4a5a7a' };
+const STRENGTH_COLOR = { strong:'#10b981', high:'#ef4444', moderate:'#f59e0b', weak:'#6b7a9a', 'very weak':'#4a5a7a', info:'#374151' };
 
 const CSS = `
   *{box-sizing:border-box;}
