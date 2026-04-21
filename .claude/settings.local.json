@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run *)",
+      "Bash(npm install *)",
+      "Bash(railway *)",
+      "Bash(curl -s https://cleaning-agent-v2-production.up.railway.app/)",
+      "Bash(vercel *)",
+      "Bash(curl -sf https://cleaning-agent-v2-production.up.railway.app/)",
+      "Bash(curl -sv https://cleaning-agent-v2-production.up.railway.app/)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" -X POST https://cleaning-agent-v2-production.up.railway.app/predict-with-template)",
+      "Bash(curl -s -I -X OPTIONS https://cleaning-agent-v2-production.up.railway.app/predict-with-template -H \"Origin: https://www.data-lab.co.uk\" -H \"Access-Control-Request-Method: POST\")",
+      "Bash(curl -s -I -X OPTIONS https://cleaning-agent-v2-production.up.railway.app/predict-with-template -H 'Origin: https://www.data-lab.co.uk' -H 'Access-Control-Request-Method: POST' -H 'Access-Control-Request-Headers: content-type')",
+      "Bash(echo 'name,age,salary,department *)",
+      "Bash(curl -s -w '\\\\nHTTP_STATUS:%{http_code}' -X POST https://cleaning-agent-v2-production.up.railway.app/predict-with-template -F file=@/tmp/test.csv)",
+      "Bash(curl -s -I -X OPTIONS https://cleaning-agent-v2-production.up.railway.app/predict-with-template -H 'Origin: https://test-123.example.com' -H 'Access-Control-Request-Method: POST')",
+      "Bash(curl -s -w '\\\\nHTTP_STATUS:%{http_code}' -X POST https://cleaning-agent-v2-production.up.railway.app/clean-columns -F file=@/tmp/test.csv -F column_names=age,salary)",
+      "Bash(python3 -c \"import sys,json; d=sys.stdin.read\\(\\); parts=d.rsplit\\('\\\\n',1\\); print\\(parts[1]\\); obj=json.loads\\(parts[0]\\); print\\('summary:', obj['summary']\\); print\\('columns cleaned:', [r['column'] for r in obj['report']]\\)\")",
+      "Bash(curl -v -X POST https://cleaning-agent-v2-production.up.railway.app/clean-columns -F file=@/tmp/test.csv -F column_names=age,salary)",
+      "Bash(curl -s -w \"\\\\nHTTP:%{http_code}\" -X POST \"https://cleaning-agent-v2-production.up.railway.app/clean-columns\" -F \"file=@/tmp/test.csv\" -F \"column_names=age,salary\")",
+      "Bash(break)",
+      "Bash(curl -s -X POST https://cleaning-agent-v2-production.up.railway.app/clean-columns -F file=@/tmp/test.csv -F column_names=age,salary)",
+      "Bash(curl -s -X POST https://cleaning-agent-v2-production.up.railway.app/predict-with-template -F file=@/tmp/test.csv)",
+      "Bash(npx react-scripts *)",
+      "Bash(gh auth *)"
+    ]
+  }
+}
