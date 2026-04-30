@@ -1,15 +1,96 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAppStore } from '../store/useAppStore';
+import { useDataLabStore } from '../../store/dataLabStore';
 import {
   uploadDataset, listDatasets, deleteDataset, createPipeline
 } from '../api/client';
 import DataTable from './DataTable';
 import AutoCleanPanel from './AutoCleanPanel';
 
+function FinderHandoffBanner({ meta, onFileReady, onDismiss }) {
+  const [fetching, setFetching] = useState(false);
+  const [fetchError, setFetchError] = useState(null);
+  const [fetchDone, setFetchDone] = useState(false);
+
+  const tryAutoFetch = async () => {
+    const { url, name } = meta;
+    if (!url) { setFetchError('No direct download URL available for this dataset.'); return; }
+    setFetching(true); setFetchError(null);
+    try {
+      const res = await fetch(url, { mode: 'cors' });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const text = await res.text();
+      if (!text.trim().startsWith('<') && text.includes(',')) {
+        const blob = new Blob([text], { type: 'text/csv' });
+        const file = new File([blob], (name || 'dataset').replace(/\s+/g, '_') + '.csv', { type: 'text/csv' });
+        onFileReady(file);
+        setFetchDone(true);
+      } else {
+        throw new Error('URL does not appear to be a direct CSV link.');
+      }
+    } catch (e) {
+      setFetchError('Auto-fetch failed: ' + e.message + '. Download the CSV manually and drop it below.');
+    } finally {
+      setFetching(false);
+    }
+  };
+
+  return (
+    <div style={{
+      margin: '0 0 20px', padding: '14px 18px',
+      background: 'rgba(91,33,182,0.08)', border: '1px solid rgba(124,58,237,0.3)',
+      borderRadius: 12, fontFamily: "'Syne',sans-serif",
+    }}>
+      <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12 }}>
+        <span style={{ fontSize: 22, flexShrink: 0 }}>🔍</span>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4, flexWrap: 'wrap' }}>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#e5e7eb' }}>Dataset from Finder</span>
+            <span style={{ padding: '1px 8px', background: 'rgba(124,58,237,0.15)', border: '1px solid rgba(124,58,237,0.3)', borderRadius: 20, fontSize: 10, color: '#a78bfa', fontFamily: 'monospace' }}>
+              {meta.source || 'EXTERNAL'}
+            </span>
+          </div>
+          <p style={{ margin: '0 0 6px', fontSize: 13, fontWeight: 600, color: '#c4b5fd', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {meta.name}
+          </p>
+          {meta.description && (
+            <p style={{ margin: '0 0 8px', fontSize: 11, color: '#6b7280', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+              {meta.description}
+            </p>
+          )}
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
+            {meta.url && (
+              <a href={meta.url} target="_blank" rel="noopener noreferrer" style={{ padding: '5px 12px', background: 'rgba(30,58,138,0.25)', border: '1px solid rgba(30,58,138,0.4)', borderRadius: 7, color: '#6fa3ef', fontSize: 11, textDecoration: 'none', fontWeight: 600 }}>
+                Open Source ↗
+              </a>
+            )}
+            {!fetchDone && (
+              <button
+                onClick={tryAutoFetch} disabled={fetching}
+                style={{ padding: '5px 12px', background: fetching ? '#1e2535' : 'rgba(91,33,182,0.2)', border: '1px solid rgba(124,58,237,0.35)', borderRadius: 7, color: fetching ? '#6b7280' : '#a78bfa', fontSize: 11, cursor: fetching ? 'not-allowed' : 'pointer', fontWeight: 600 }}
+              >
+                {fetching ? '⏳ Fetching…' : '⚡ Auto-Fetch CSV'}
+              </button>
+            )}
+            {fetchDone && <span style={{ fontSize: 11, color: '#4ade80', fontWeight: 600 }}>✓ Loaded — drop it into the panel or upload below</span>}
+            <button onClick={onDismiss} style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#4b5563', cursor: 'pointer', fontSize: 18, padding: '0 4px', lineHeight: 1 }}>✕</button>
+          </div>
+          {fetchError && (
+            <div style={{ marginTop: 8, padding: '6px 10px', background: 'rgba(127,29,29,0.2)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 7, fontSize: 11, color: '#fca5a5' }}>
+              ⚠ {fetchError}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function UploadPage() {
   const navigate = useNavigate();
   const { datasets, setDatasets, setActiveDataset, setActivePipeline, setActiveFile } = useAppStore();
+  const { handoff, clearHandoff } = useDataLabStore();
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
   const [backendDown, setBackendDown] = useState(false);
@@ -19,6 +100,7 @@ export default function UploadPage() {
   const [newPipelineName, setNewPipelineName] = useState('');
   const [creatingPipeline, setCreatingPipeline] = useState(false);
   const [showAutoClean, setShowAutoClean] = useState(false);
+  const [showFinderBanner, setShowFinderBanner] = useState(handoff?.origin === 'finder');
   const fileInputRef = { current: null };
 
   useEffect(() => {
@@ -132,6 +214,14 @@ export default function UploadPage() {
 
       {/* Main */}
       <div style={s.main}>
+        {/* Finder handoff banner */}
+        {showFinderBanner && handoff?.finderMeta && (
+          <FinderHandoffBanner
+            meta={handoff.finderMeta}
+            onFileReady={(file) => { handleFile(file); setShowAutoClean(true); }}
+            onDismiss={() => { setShowFinderBanner(false); clearHandoff(); }}
+          />
+        )}
         {!preview && (
           <div style={{ display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', height:'100%', color:'#4b5563', gap:12 }}>
             <div style={{ fontSize:40 }}>📊</div>

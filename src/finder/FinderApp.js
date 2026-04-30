@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
+import { useNavigate } from "react-router-dom";
+import { useDataLabStore } from "../store/dataLabStore";
 
 const API_BASE = "https://dataset-finder-backend-production.up.railway.app";
 const MAX_SEARCHES_PER_DAY = 5;
@@ -148,6 +150,8 @@ function ScoreBar({ score, small, animated }) {
 }
 
 export default function FinderApp() {
+  const navigate = useNavigate();
+  const { setHandoff } = useDataLabStore();
   const [page, setPage] = useState("search");
   const [user, setUser] = useState(null);
   const [authLoading, setAL] = useState(true);
@@ -172,6 +176,26 @@ export default function FinderApp() {
   }, []);
 
   const logout = () => { removeToken(); setUser(null); setPage("search"); };
+
+  const handleSendToDebugger = (ds) => {
+    setHandoff({
+      origin: 'finder',
+      datasetName: ds.name,
+      finderMeta: {
+        name: ds.name,
+        url: ds.url,
+        source: ds.source,
+        description: ds.description,
+        format: ds.format,
+        license: ds.license,
+        size: ds.size,
+      },
+      cleanedCsv: null,
+      cleaningSummary: null,
+    });
+    navigate('/debugger');
+  };
+
   if (authLoading) return <Loading />;
 
   return (
@@ -572,6 +596,20 @@ function SearchPage({ user, setPage }) {
                       </button>
                       <button onClick={() => saveDataset(ds)} style={{ ...S.btn(msg === "saved" ? "ghost" : "primary"), padding: "6px 14px", fontSize: 12 }}>
                         {msg === "saving" ? "Saving..." : msg === "saved" ? "✓ Saved!" : msg || "💾 Save Dataset"}
+                      </button>
+                      <button
+                        onClick={() => handleSendToDebugger(ds)}
+                        style={{
+                          padding: "6px 14px", border: "none", borderRadius: 9,
+                          background: "linear-gradient(135deg,#5b21b6,#7c3aed)",
+                          color: "#fff", fontSize: 12, fontWeight: 700,
+                          cursor: "pointer", display: "flex", alignItems: "center", gap: 6,
+                          fontFamily: "'Syne',sans-serif", transition: "opacity 0.15s",
+                        }}
+                        onMouseEnter={e => e.currentTarget.style.opacity = "0.85"}
+                        onMouseLeave={e => e.currentTarget.style.opacity = "1"}
+                      >
+                        🧹 Clean Dataset →
                       </button>
                       {user && collections.length > 0 && (
                         <select onChange={e => { if (e.target.value) saveDataset(ds, e.target.value); e.target.value = ""; }}

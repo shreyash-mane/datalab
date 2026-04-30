@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
-import { predictCleaning, cleanColumns } from '../api/client';
+import { useNavigate } from 'react-router-dom';
+import { useDataLabStore } from '../../store/dataLabStore';
+import { predictCleaning, cleanColumns, downloadClean } from '../api/client';
 
 const ACTION_LABELS = {
   no_change: 'No Change',
@@ -20,6 +22,8 @@ const confColor = (c) =>
   c > 0.85 ? '#4ade80' : c > 0.65 ? '#fbbf24' : '#f87171';
 
 export default function AutoCleanPanel({ file, datasetName, onClose }) {
+  const navigate = useNavigate();
+  const { setHandoff } = useDataLabStore();
   const [loading, setLoading] = useState(true);
   const [predictions, setPredictions] = useState([]);
   const [template, setTemplate] = useState(null);
@@ -28,6 +32,7 @@ export default function AutoCleanPanel({ file, datasetName, onClose }) {
   const [cleaning, setCleaning] = useState(false);
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
+  const [sendingToViz, setSendingToViz] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -77,6 +82,37 @@ export default function AutoCleanPanel({ file, datasetName, onClose }) {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a'); a.href = url; a.download = 'cleaned_' + datasetName; a.click();
     URL.revokeObjectURL(url);
+  };
+
+  const handleSendToVisualizer = async () => {
+    setSendingToViz(true);
+    let csvText = null;
+    try {
+      // Fetch the full cleaned dataset from the backend
+      csvText = await downloadClean(file);
+    } catch {
+      // Fall back to preview rows if download fails
+      const rows = result.preview || [];
+      if (rows.length > 0) {
+        const headers = Object.keys(rows[0]);
+        csvText = [
+          headers.join(','),
+          ...rows.map(r => headers.map(h => {
+            const v = r[h]; if (v === null || v === undefined) return '';
+            const s = String(v); return s.includes(',') || s.includes('"') ? `"${s.replace(/"/g, '""')}"` : s;
+          }).join(',')),
+        ].join('\n');
+      }
+    }
+    if (!csvText) { setSendingToViz(false); return; }
+    setHandoff({
+      origin: 'debugger',
+      datasetName: 'cleaned_' + datasetName,
+      finderMeta: null,
+      cleanedCsv: csvText,
+      cleaningSummary: result.summary || null,
+    });
+    navigate('/visualizer');
   };
 
   const toggleAll = (val) => {
@@ -299,13 +335,22 @@ export default function AutoCleanPanel({ file, datasetName, onClose }) {
                 </div>
               )}
 
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button onClick={handleDownload} style={{ flex: 1, padding: '10px', background: 'linear-gradient(135deg,#6d28d9,#8b5cf6)', border: 'none', borderRadius: 8, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
-                  ↓ Download Cleaned CSV
+              <div style={{ display: 'flex', gap: 8, flexDirection: 'column' }}>
+                <button
+                  onClick={handleSendToVisualizer}
+                  disabled={sendingToViz}
+                  style={{ width: '100%', padding: '11px', background: sendingToViz ? '#1e2535' : 'linear-gradient(135deg,#0369a1,#0ea5e9)', border: 'none', borderRadius: 10, color: sendingToViz ? '#4b5563' : '#fff', fontSize: 13, fontWeight: 700, cursor: sendingToViz ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8 }}
+                >
+                  {sendingToViz ? '⏳ Preparing…' : '📊 Visualize Data →'}
                 </button>
-                <button onClick={() => { setResult(null); setError(null); }} style={{ padding: '10px 14px', background: '#1e2535', border: '1px solid #252d40', borderRadius: 8, color: '#d1d5db', fontSize: 12, cursor: 'pointer' }}>
-                  ← Back
-                </button>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button onClick={handleDownload} style={{ flex: 1, padding: '10px', background: 'linear-gradient(135deg,#6d28d9,#8b5cf6)', border: 'none', borderRadius: 8, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}>
+                    ↓ Download Cleaned CSV
+                  </button>
+                  <button onClick={() => { setResult(null); setError(null); }} style={{ padding: '10px 14px', background: '#1e2535', border: '1px solid #252d40', borderRadius: 8, color: '#d1d5db', fontSize: 12, cursor: 'pointer' }}>
+                    ← Back
+                  </button>
+                </div>
               </div>
             </>
           )}

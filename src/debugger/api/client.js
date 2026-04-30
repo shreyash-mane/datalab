@@ -29,6 +29,15 @@ export async function cleanAllColumns(file) {
   return cleanerReq('/clean', form);
 }
 
+export async function downloadClean(file) {
+  const form = new FormData(); form.append('file', file);
+  let res;
+  try { res = await fetch(CLEANER + '/clean/download', { method: 'POST', body: form }); }
+  catch { throw new Error('Cannot reach the cleaning agent.'); }
+  if (!res.ok) throw new Error('Clean download failed: ' + res.status);
+  return res.text();
+}
+
 export async function analyzeFile(file) {
   const form = new FormData(); form.append('file', file);
   return cleanerReq('/analyze', form);

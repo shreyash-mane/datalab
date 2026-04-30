@@ -1,4 +1,5 @@
-import { useState, useCallback, useMemo, useRef } from 'react';
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { useDataLabStore } from '../store/dataLabStore';
 import {
   BarChart, Bar, LineChart, Line, AreaChart, Area,
   ScatterChart, Scatter, PieChart, Pie, Cell,
@@ -597,7 +598,45 @@ function GlobalFiltersPanel({ filters, setFilters, columns }) {
 
 // ─── Main App ────────────────────────────────────────────────────────────────
 
+function autoSuggestCharts(numeric, categorical) {
+  const suggestions = [];
+  if (categorical.length > 0 && numeric.length > 0) {
+    suggestions.push({
+      id: _cardId++, title: `${categorical[0]} by ${numeric[0]}`,
+      type: 'bar', xCol: categorical[0], yCol: numeric[0], colorCol: '',
+      rowsCol: '', colsCol: '', valuesCol: numeric[0],
+      tableCols: [], aggFn: 'sum', sortCol: '', sortDir: 'asc', filters: [], editing: false,
+    });
+  }
+  if (numeric.length >= 2) {
+    suggestions.push({
+      id: _cardId++, title: `${numeric[0]} vs ${numeric[1]}`,
+      type: 'scatter', xCol: numeric[0], yCol: numeric[1], colorCol: '',
+      rowsCol: '', colsCol: '', valuesCol: '',
+      tableCols: [], aggFn: 'mean', sortCol: '', sortDir: 'asc', filters: [], editing: false,
+    });
+  }
+  if (numeric.length > 0) {
+    suggestions.push({
+      id: _cardId++, title: `Avg ${numeric[0]}`,
+      type: 'kpi', xCol: '', yCol: '', colorCol: '',
+      rowsCol: '', colsCol: '', valuesCol: numeric[0],
+      tableCols: [], aggFn: 'mean', sortCol: '', sortDir: 'asc', filters: [], editing: false,
+    });
+  }
+  if (categorical.length > 0 && numeric.length > 0) {
+    suggestions.push({
+      id: _cardId++, title: `${numeric[0]} distribution`,
+      type: 'line', xCol: categorical[0], yCol: numeric[0], colorCol: '',
+      rowsCol: '', colsCol: '', valuesCol: numeric[0],
+      tableCols: [], aggFn: 'count', sortCol: '', sortDir: 'asc', filters: [], editing: false,
+    });
+  }
+  return suggestions;
+}
+
 export default function VisualizerApp() {
+  const { handoff, clearHandoff } = useDataLabStore();
   const [rows, setRows] = useState([]);
   const [columns, setColumns] = useState([]);
   const [numericCols, setNumericCols] = useState([]);
@@ -607,6 +646,8 @@ export default function VisualizerApp() {
   const [charts, setCharts] = useState([]);
   const [calcFields, setCalcFields] = useState([]);
   const [globalFilters, setGlobalFilters] = useState([]);
+  const [cleaningSummary, setCleaningSummary] = useState(null);
+  const [fromDebugger, setFromDebugger] = useState(false);
 
   // Apply calculated fields + global filters to produce base rows for all visuals
   const enrichedRows = useMemo(() => {
@@ -630,12 +671,33 @@ export default function VisualizerApp() {
     [numericCols, calcFields]
   );
 
+  // Auto-load cleaned data handed off from the Debugger
+  useEffect(() => {
+    if (handoff?.origin === 'debugger' && handoff?.cleanedCsv) {
+      const { headers, rows: parsed } = parseCSV(handoff.cleanedCsv);
+      const { numeric, categorical } = detectTypes(headers, parsed);
+      setFileName(handoff.datasetName || 'cleaned_data.csv');
+      setColumns(headers);
+      setRows(parsed);
+      setNumericCols(numeric);
+      setCatCols(categorical);
+      setCalcFields([]);
+      setGlobalFilters([]);
+      setCharts(autoSuggestCharts(numeric, categorical));
+      setCleaningSummary(handoff.cleaningSummary || null);
+      setFromDebugger(true);
+      clearHandoff();
+    }
+  }, []); // intentional: run once on mount to consume handoff
+
   const handleFile = useCallback((file) => {
     if (!file.name.endsWith('.csv') && !file.name.endsWith('.tsv')) {
       alert('Please upload a CSV file.');
       return;
     }
     setFileName(file.name);
+    setFromDebugger(false);
+    setCleaningSummary(null);
     const reader = new FileReader();
     reader.onload = e => {
       const { headers, rows: parsed } = parseCSV(e.target.result);
@@ -723,6 +785,25 @@ export default function VisualizerApp() {
 
       {/* ── Main Canvas ── */}
       <div style={{ flex:1, overflowY:'auto', display:'flex', flexDirection:'column' }}>
+
+        {/* Debugger handoff banner */}
+        {fromDebugger && cleaningSummary && (
+          <div style={{ margin:'16px 20px 0', padding:'10px 16px', background:'rgba(5,150,105,0.08)', border:'1px solid rgba(16,185,129,0.25)', borderRadius:10, display:'flex', alignItems:'center', gap:12, flexWrap:'wrap', flexShrink:0 }}>
+            <span style={{ fontSize:16 }}>🧹</span>
+            <span style={{ fontSize:12, color:'#6ee7b7', fontWeight:600 }}>Loaded from Debugger</span>
+            <span style={{ fontSize:11, color:'#4b5563', fontFamily:'monospace' }}>{fileName}</span>
+            <div style={{ display:'flex', gap:12, flexWrap:'wrap', marginLeft:8 }}>
+              {[['Rows before', cleaningSummary.rows_before], ['Rows after', cleaningSummary.rows_after], ['Cells changed', cleaningSummary.total_cells_changed]].map(([label, val]) => val != null ? (
+                <span key={label} style={{ fontSize:11, color:'#9ca3af' }}>
+                  <span style={{ color:'#6b7280' }}>{label}: </span>
+                  <span style={{ color:'#e5e7eb', fontFamily:'monospace' }}>{String(val)}</span>
+                </span>
+              ) : null)}
+            </div>
+            <span style={{ marginLeft:'auto', fontSize:10, color:'#4ade80', fontFamily:'monospace' }}>✓ {charts.length} charts auto-suggested</span>
+            <button onClick={() => setFromDebugger(false)} style={{ background:'none', border:'none', color:'#4b5563', cursor:'pointer', fontSize:16, padding:'0 2px', lineHeight:1 }}>✕</button>
+          </div>
+        )}
 
         {/* Empty state */}
         {rows.length === 0 && (
