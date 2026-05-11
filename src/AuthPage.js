@@ -131,16 +131,38 @@ export default function AuthPage() {
     finally { setForgotLoading(false); }
   };
 
-  // OTP digit input handler
-  const handleOtpDigit = (i, val) => {
-    if (!/^\d?$/.test(val)) return;
+  // OTP digit handlers — extract last digit so typing into a filled box still works
+  const handleOtpDigit = (i, raw) => {
+    const digit = raw.replace(/\D/g, '').slice(-1); // strip non-digits, keep last char
     const next = [...forgotOtp];
-    next[i] = val;
+    next[i] = digit;
     setForgotOtp(next);
-    if (val && i < 5) document.getElementById(`otp-${i + 1}`)?.focus();
+    if (digit && i < 5) document.getElementById(`otp-${i + 1}`)?.focus();
   };
   const handleOtpKeyDown = (i, e) => {
-    if (e.key === 'Backspace' && !forgotOtp[i] && i > 0) document.getElementById(`otp-${i - 1}`)?.focus();
+    if (e.key === 'Backspace') {
+      if (forgotOtp[i]) {
+        // clear current box
+        const next = [...forgotOtp]; next[i] = ''; setForgotOtp(next);
+      } else if (i > 0) {
+        // move to previous box
+        document.getElementById(`otp-${i - 1}`)?.focus();
+      }
+    }
+    // Arrow key navigation
+    if (e.key === 'ArrowLeft' && i > 0) document.getElementById(`otp-${i - 1}`)?.focus();
+    if (e.key === 'ArrowRight' && i < 5) document.getElementById(`otp-${i + 1}`)?.focus();
+  };
+  const handleOtpPaste = (e) => {
+    e.preventDefault();
+    const digits = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (!digits) return;
+    const next = [...forgotOtp];
+    digits.split('').forEach((d, idx) => { next[idx] = d; });
+    setForgotOtp(next);
+    // Focus the box after the last pasted digit
+    const focusIdx = Math.min(digits.length, 5);
+    document.getElementById(`otp-${focusIdx}`)?.focus();
   };
 
   const inputStyle = {
@@ -175,13 +197,18 @@ export default function AuthPage() {
       <div style={{ display: 'flex', gap: 8, justifyContent: 'center', margin: '16px 0' }}>
         {forgotOtp.map((d, i) => (
           <input key={i} id={`otp-${i}`} className="otp-digit"
-            value={d} onChange={e => handleOtpDigit(i, e.target.value)}
+            value={d}
+            onChange={e => handleOtpDigit(i, e.target.value)}
             onKeyDown={e => handleOtpKeyDown(i, e)}
-            maxLength={1} inputMode="numeric"
+            onPaste={handleOtpPaste}
+            onFocus={e => e.target.select()}
+            maxLength={2}
+            inputMode="numeric"
             style={{
               width: 44, height: 52, textAlign: 'center', fontSize: 22, fontWeight: 800,
-              background: 'rgba(8,15,40,0.9)', border: '1px solid rgba(30,58,138,0.5)',
+              background: 'rgba(8,15,40,0.9)', border: `1px solid ${d ? '#3b82f6' : 'rgba(30,58,138,0.5)'}`,
               borderRadius: 10, color: '#6fa3ef', fontFamily: 'monospace',
+              transition: 'border-color 0.15s',
             }} />
         ))}
       </div>
