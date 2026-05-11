@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate, useNavigate, useLocation } from 'react-router-dom';
 import { useEffect } from 'react';
 import { useDataLabStore } from './store/dataLabStore';
+
 import AuthPage from './AuthPage';
 import LandingPage from './LandingPage';
 import SharedNav from './SharedNav';
@@ -49,7 +50,9 @@ function AuthCallback() {
 }
 
 export default function App() {
+  const { theme } = useDataLabStore();
   return (
+    <div style={{ minHeight: '100vh', background: 'var(--body-bg)', color: 'var(--page-text)', transition: 'background 0.25s, color 0.25s' }}>
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<AuthPage />} />
@@ -63,5 +66,6 @@ export default function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
+    </div>
   );
 }

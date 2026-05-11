@@ -6,7 +6,6 @@ const API_BASE = 'https://dataset-finder-backend-production.up.railway.app';
 
 const CSS = `
   *{box-sizing:border-box;margin:0;padding:0;}
-  body{background:#030712;}
   @keyframes fadeUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
   @keyframes pulse{0%,100%{opacity:0.4}50%{opacity:1}}
   @keyframes spin{to{transform:rotate(360deg)}}
@@ -18,9 +17,13 @@ const CSS = `
   .btn-ghost:hover{background:rgba(30,58,138,0.35)!important;}
   .btn-guest{transition:all 0.2s;}
   .btn-guest:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 8px 24px rgba(16,185,129,0.3);}
-  .divider-line{flex:1;height:1px;background:rgba(30,58,138,0.4);}
+  .divider-line{flex:1;height:1px;background:var(--card-border);}
   .otp-digit{transition:border-color 0.2s,box-shadow 0.2s;}
   .otp-digit:focus{border-color:#3b82f6!important;box-shadow:0 0 0 3px rgba(59,130,246,0.15)!important;outline:none;}
+  .pw-wrap{position:relative;display:flex;align-items:center;}
+  .pw-wrap .auth-input{padding-right:40px;}
+  .pw-eye{position:absolute;right:12px;background:none;border:none;cursor:pointer;color:var(--input-placeholder);font-size:16px;padding:2px;line-height:1;transition:color 0.15s;}
+  .pw-eye:hover{color:var(--page-text);}
 `;
 
 const Spinner = () => (
@@ -38,6 +41,11 @@ export default function AuthPage() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+
+  // Password visibility toggles
+  const [showPw, setShowPw] = useState(false);
+  const [showForgotNew, setShowForgotNew] = useState(false);
+  const [showForgotConfirm, setShowForgotConfirm] = useState(false);
 
   // Forgot password state — steps: null | 'email-send' | 'otp-email'
   const [forgotStep, setForgotStep] = useState(null);
@@ -167,10 +175,24 @@ export default function AuthPage() {
 
   const inputStyle = {
     width: '100%', padding: '11px 14px',
-    background: 'rgba(8,15,40,0.9)', border: '1px solid rgba(30,58,138,0.5)',
-    borderRadius: 10, color: '#e0e8ff', fontSize: 14,
+    background: 'var(--input-bg)', border: '1px solid var(--input-border)',
+    borderRadius: 10, color: 'var(--input-text)', fontSize: 14,
     fontFamily: "'Syne',sans-serif",
   };
+
+  const EyeBtn = ({ show, onToggle }) => (
+    <button type="button" className="pw-eye" onClick={onToggle} tabIndex={-1}>
+      {show ? '🙈' : '👁'}
+    </button>
+  );
+
+  const PwInput = ({ value, onChange, onKeyDown, placeholder, show, onToggle }) => (
+    <div className="pw-wrap">
+      <input className="auth-input" value={value} onChange={onChange} onKeyDown={onKeyDown}
+        placeholder={placeholder} type={show ? 'text' : 'password'} style={inputStyle} />
+      <EyeBtn show={show} onToggle={onToggle} />
+    </div>
+  );
 
   const btnPrimary = (label, onClick, disabled) => (
     <button className="btn-primary" onClick={onClick} disabled={disabled || forgotLoading}
@@ -242,12 +264,14 @@ export default function AuthPage() {
         <p style={{ fontSize: 12, color: '#4a5a7a', margin: '0 0 4px' }}>6-digit code sent to <strong style={{ color: '#6fa3ef' }}>{forgotEmail}</strong></p>
         <ForgotAlert />
         <OtpInputs />
-        <p style={{ fontSize: 12, color: '#4a5a7a', margin: '8px 0 4px' }}>Set your new password:</p>
+        <p style={{ fontSize: 12, color: 'var(--page-subtext)', margin: '8px 0 4px' }}>Set your new password:</p>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, margin: '8px 0 14px' }}>
-          <input className="auth-input" value={forgotNewPw} onChange={e => setForgotNewPw(e.target.value)}
-            placeholder="New password (min 6 chars)" type="password" style={inputStyle} />
-          <input className="auth-input" value={forgotConfirmPw} onChange={e => setForgotConfirmPw(e.target.value)}
-            placeholder="Confirm new password" type="password" style={inputStyle} />
+          <PwInput value={forgotNewPw} onChange={e => setForgotNewPw(e.target.value)}
+            placeholder="New password (min 6 chars)"
+            show={showForgotNew} onToggle={() => setShowForgotNew(p => !p)} />
+          <PwInput value={forgotConfirmPw} onChange={e => setForgotConfirmPw(e.target.value)}
+            placeholder="Confirm new password"
+            show={showForgotConfirm} onToggle={() => setShowForgotConfirm(p => !p)} />
         </div>
         {btnPrimary('Reset Password →', verifyOtpAndReset)}
         <div style={{ textAlign: 'center', marginTop: 12 }}>
@@ -264,9 +288,10 @@ export default function AuthPage() {
 
   return (
     <div style={{
-      minHeight: '100vh', background: '#030712',
+      minHeight: '100vh', background: 'var(--page-bg)',
       display: 'flex', alignItems: 'center', justifyContent: 'center',
       padding: '20px', fontFamily: "'Syne',sans-serif", position: 'relative', overflow: 'hidden',
+      transition: 'background 0.25s',
     }}>
       <style>{CSS}</style>
       <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
@@ -294,7 +319,7 @@ export default function AuthPage() {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start' }}>
 
           {/* LEFT — Login / Register / Forgot */}
-          <div style={{ background: 'rgba(8,15,40,0.95)', border: '1px solid rgba(30,58,138,0.4)', borderRadius: 20, padding: 32, backdropFilter: 'blur(12px)' }}>
+          <div style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 20, padding: 32, backdropFilter: 'blur(12px)', transition: 'background 0.25s, border-color 0.25s' }}>
 
             {forgotStep ? renderForgotPanel() : (
               <>
@@ -313,10 +338,10 @@ export default function AuthPage() {
                 </div>
 
                 <div style={{ marginBottom: 6 }}>
-                  <h2 style={{ fontSize: 20, fontWeight: 800, color: '#e0e8ff', margin: '0 0 4px' }}>
+                  <h2 style={{ fontSize: 20, fontWeight: 800, color: 'var(--page-text)', margin: '0 0 4px' }}>
                     {tab === 'login' ? 'Welcome back' : 'Join DataLab'}
                   </h2>
-                  <p style={{ fontSize: 12, color: '#4a5a7a', margin: 0 }}>
+                  <p style={{ fontSize: 12, color: 'var(--page-subtext)', margin: 0 }}>
                     {tab === 'login' ? '3 searches per session after login' : 'Create your account for 3 searches per session'}
                   </p>
                 </div>
@@ -334,8 +359,9 @@ export default function AuthPage() {
                   )}
                   <input className="auth-input" value={email} onChange={e => setEmail(e.target.value)} onKeyDown={handleKey}
                     placeholder="Email address" type="email" style={inputStyle} />
-                  <input className="auth-input" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={handleKey}
-                    placeholder={tab === 'register' ? 'Password (min 6 characters)' : 'Password'} type="password" style={inputStyle} />
+                  <PwInput value={password} onChange={e => setPassword(e.target.value)} onKeyDown={handleKey}
+                    placeholder={tab === 'register' ? 'Password (min 6 characters)' : 'Password'}
+                    show={showPw} onToggle={() => setShowPw(p => !p)} />
                 </div>
 
                 {/* Forgot password link */}
@@ -372,9 +398,9 @@ export default function AuthPage() {
                   {[['🔵 Google', `${API_BASE}/auth/google`], ['⚫ GitHub', `${API_BASE}/auth/github`]].map(([label, href]) => (
                     <a key={label} href={href} className="btn-ghost"
                       style={{
-                        flex: 1, padding: '9px', background: 'rgba(14,24,58,0.6)',
-                        border: '1px solid rgba(30,58,138,0.4)', borderRadius: 9,
-                        color: '#8899bb', fontSize: 12, fontWeight: 600, textAlign: 'center',
+                        flex: 1, padding: '9px', background: 'var(--card-bg-2)',
+                        border: '1px solid var(--card-border)', borderRadius: 9,
+                        color: 'var(--page-subtext)', fontSize: 12, fontWeight: 600, textAlign: 'center',
                         textDecoration: 'none', fontFamily: "'Syne',sans-serif",
                       }}>
                       {label}
@@ -382,7 +408,7 @@ export default function AuthPage() {
                   ))}
                 </div>
 
-                <p style={{ textAlign: 'center', fontSize: 12, color: '#4a5a7a', margin: 0 }}>
+                <p style={{ textAlign: 'center', fontSize: 12, color: 'var(--page-subtext)', margin: 0 }}>
                   {tab === 'login'
                     ? <>No account? <span onClick={() => { setTab('register'); setError(''); }} style={{ color: '#6fa3ef', cursor: 'pointer', textDecoration: 'underline' }}>Create one free</span></>
                     : <>Have an account? <span onClick={() => { setTab('login'); setError(''); }} style={{ color: '#6fa3ef', cursor: 'pointer', textDecoration: 'underline' }}>Sign in</span></>}
@@ -395,7 +421,7 @@ export default function AuthPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
             {/* Guest card */}
-            <div style={{ background: 'rgba(5,20,15,0.95)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 20, padding: 28, backdropFilter: 'blur(12px)', textAlign: 'center' }}>
+            <div style={{ background: 'var(--card-bg)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 20, padding: 28, backdropFilter: 'blur(12px)', textAlign: 'center', transition: 'background 0.25s' }}>
               <div style={{ fontSize: 42, marginBottom: 12 }}>🚀</div>
               <h3 style={{ fontSize: 18, fontWeight: 800, color: '#e0e8ff', margin: '0 0 6px' }}>Try Without an Account</h3>
               <p style={{ fontSize: 13, color: '#6b7a9a', lineHeight: 1.6, margin: '0 0 16px' }}>
@@ -429,8 +455,8 @@ export default function AuthPage() {
             </div>
 
             {/* Feature list */}
-            <div style={{ background: 'rgba(8,15,40,0.9)', border: '1px solid rgba(30,58,138,0.25)', borderRadius: 16, padding: 20 }}>
-              <p style={{ fontSize: 10, color: '#4a5a7a', fontFamily: "'Space Mono',monospace", letterSpacing: 1.5, margin: '0 0 12px' }}>WHAT'S INSIDE DATALAB</p>
+            <div style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border-2)', borderRadius: 16, padding: 20, transition: 'background 0.25s' }}>
+              <p style={{ fontSize: 10, color: 'var(--page-subtext)', fontFamily: "'Space Mono',monospace", letterSpacing: 1.5, margin: '0 0 12px' }}>WHAT'S INSIDE DATALAB</p>
               {[
                 ['🔍', 'Dataset Finder', 'AI-ranked datasets with 7 reliability factors'],
                 ['🧹', 'Debugger & Cleaner', 'ML-powered pipeline & auto data cleaning'],
@@ -438,11 +464,11 @@ export default function AuthPage() {
                 ['📐', 'Stat Analyzer', 'Distributions, correlations & outlier detection'],
                 ['🤖', 'AI Insights', 'Auto-detected patterns & relationship cards'],
               ].map(([icon, title, desc]) => (
-                <div key={title} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10, padding: '8px 10px', borderRadius: 8, background: 'rgba(14,24,58,0.5)' }}>
+                <div key={title} style={{ display: 'flex', alignItems: 'flex-start', gap: 10, marginBottom: 10, padding: '8px 10px', borderRadius: 8, background: 'var(--card-bg-2)' }}>
                   <span style={{ fontSize: 16, flexShrink: 0, marginTop: 1 }}>{icon}</span>
                   <div>
-                    <div style={{ fontSize: 12, fontWeight: 700, color: '#c8d8f0' }}>{title}</div>
-                    <div style={{ fontSize: 11, color: '#4a5a7a', lineHeight: 1.4, marginTop: 1 }}>{desc}</div>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: 'var(--page-text)' }}>{title}</div>
+                    <div style={{ fontSize: 11, color: 'var(--page-subtext)', lineHeight: 1.4, marginTop: 1 }}>{desc}</div>
                   </div>
                 </div>
               ))}
@@ -450,7 +476,7 @@ export default function AuthPage() {
           </div>
         </div>
 
-        <p style={{ textAlign: 'center', color: '#1e2a3a', fontSize: 11, marginTop: 24, fontFamily: "'Space Mono',monospace" }}>
+        <p style={{ textAlign: 'center', color: 'var(--page-muted)', fontSize: 11, marginTop: 24, fontFamily: "'Space Mono',monospace" }}>
           DataLab · AI-Powered Data Research Suite
         </p>
       </div>
