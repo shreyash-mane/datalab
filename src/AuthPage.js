@@ -30,6 +30,28 @@ const Spinner = () => (
   <span style={{ width: 14, height: 14, border: '2px solid rgba(255,255,255,0.3)', borderTopColor: '#fff', borderRadius: '50%', display: 'inline-block', animation: 'spin 0.8s linear infinite' }} />
 );
 
+const inputStyle = {
+  width: '100%', padding: '11px 14px',
+  background: 'var(--input-bg)', border: '1px solid var(--input-border)',
+  borderRadius: 10, color: 'var(--input-text)', fontSize: 14,
+  fontFamily: "'Syne',sans-serif",
+};
+
+const EyeBtn = ({ show, onToggle }) => (
+  <button type="button" className="pw-eye" onClick={onToggle} tabIndex={-1}>
+    {show ? '👁' : '🙈'}
+  </button>
+);
+
+const PwInput = ({ value, onChange, onKeyDown, placeholder, show, onToggle }) => (
+  <div className="pw-wrap">
+    <input className="auth-input" value={value} onChange={onChange} onKeyDown={onKeyDown}
+      placeholder={placeholder} type={show ? 'text' : 'password'} style={inputStyle}
+      autoComplete="current-password" />
+    <EyeBtn show={show} onToggle={onToggle} />
+  </div>
+);
+
 export default function AuthPage() {
   const navigate = useNavigate();
   const { loginDataLab, continueAsGuest } = useDataLabStore();
@@ -172,27 +194,6 @@ export default function AuthPage() {
     const focusIdx = Math.min(digits.length, 5);
     document.getElementById(`otp-${focusIdx}`)?.focus();
   };
-
-  const inputStyle = {
-    width: '100%', padding: '11px 14px',
-    background: 'var(--input-bg)', border: '1px solid var(--input-border)',
-    borderRadius: 10, color: 'var(--input-text)', fontSize: 14,
-    fontFamily: "'Syne',sans-serif",
-  };
-
-  const EyeBtn = ({ show, onToggle }) => (
-    <button type="button" className="pw-eye" onClick={onToggle} tabIndex={-1}>
-      {show ? '👁' : '🙈'}
-    </button>
-  );
-
-  const PwInput = ({ value, onChange, onKeyDown, placeholder, show, onToggle }) => (
-    <div className="pw-wrap">
-      <input className="auth-input" value={value} onChange={onChange} onKeyDown={onKeyDown}
-        placeholder={placeholder} type={show ? 'text' : 'password'} style={inputStyle} />
-      <EyeBtn show={show} onToggle={onToggle} />
-    </div>
-  );
 
   const btnPrimary = (label, onClick, disabled) => (
     <button className="btn-primary" onClick={onClick} disabled={disabled || forgotLoading}
