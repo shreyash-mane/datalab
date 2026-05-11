@@ -4,54 +4,6 @@ import { useDataLabStore } from './store/dataLabStore';
 
 const API_BASE = 'https://dataset-finder-backend-production.up.railway.app';
 
-const COUNTRY_CODES = [
-  { code: '+1',   flag: '🇺🇸', name: 'United States' },
-  { code: '+1',   flag: '🇨🇦', name: 'Canada' },
-  { code: '+44',  flag: '🇬🇧', name: 'United Kingdom' },
-  { code: '+91',  flag: '🇮🇳', name: 'India' },
-  { code: '+61',  flag: '🇦🇺', name: 'Australia' },
-  { code: '+49',  flag: '🇩🇪', name: 'Germany' },
-  { code: '+33',  flag: '🇫🇷', name: 'France' },
-  { code: '+39',  flag: '🇮🇹', name: 'Italy' },
-  { code: '+34',  flag: '🇪🇸', name: 'Spain' },
-  { code: '+31',  flag: '🇳🇱', name: 'Netherlands' },
-  { code: '+46',  flag: '🇸🇪', name: 'Sweden' },
-  { code: '+47',  flag: '🇳🇴', name: 'Norway' },
-  { code: '+45',  flag: '🇩🇰', name: 'Denmark' },
-  { code: '+41',  flag: '🇨🇭', name: 'Switzerland' },
-  { code: '+43',  flag: '🇦🇹', name: 'Austria' },
-  { code: '+32',  flag: '🇧🇪', name: 'Belgium' },
-  { code: '+351', flag: '🇵🇹', name: 'Portugal' },
-  { code: '+48',  flag: '🇵🇱', name: 'Poland' },
-  { code: '+7',   flag: '🇷🇺', name: 'Russia' },
-  { code: '+86',  flag: '🇨🇳', name: 'China' },
-  { code: '+81',  flag: '🇯🇵', name: 'Japan' },
-  { code: '+82',  flag: '🇰🇷', name: 'South Korea' },
-  { code: '+65',  flag: '🇸🇬', name: 'Singapore' },
-  { code: '+60',  flag: '🇲🇾', name: 'Malaysia' },
-  { code: '+66',  flag: '🇹🇭', name: 'Thailand' },
-  { code: '+62',  flag: '🇮🇩', name: 'Indonesia' },
-  { code: '+63',  flag: '🇵🇭', name: 'Philippines' },
-  { code: '+84',  flag: '🇻🇳', name: 'Vietnam' },
-  { code: '+92',  flag: '🇵🇰', name: 'Pakistan' },
-  { code: '+880', flag: '🇧🇩', name: 'Bangladesh' },
-  { code: '+94',  flag: '🇱🇰', name: 'Sri Lanka' },
-  { code: '+971', flag: '🇦🇪', name: 'UAE' },
-  { code: '+966', flag: '🇸🇦', name: 'Saudi Arabia' },
-  { code: '+974', flag: '🇶🇦', name: 'Qatar' },
-  { code: '+965', flag: '🇰🇼', name: 'Kuwait' },
-  { code: '+20',  flag: '🇪🇬', name: 'Egypt' },
-  { code: '+27',  flag: '🇿🇦', name: 'South Africa' },
-  { code: '+234', flag: '🇳🇬', name: 'Nigeria' },
-  { code: '+254', flag: '🇰🇪', name: 'Kenya' },
-  { code: '+55',  flag: '🇧🇷', name: 'Brazil' },
-  { code: '+54',  flag: '🇦🇷', name: 'Argentina' },
-  { code: '+52',  flag: '🇲🇽', name: 'Mexico' },
-  { code: '+56',  flag: '🇨🇱', name: 'Chile' },
-  { code: '+57',  flag: '🇨🇴', name: 'Colombia' },
-  { code: '+64',  flag: '🇳🇿', name: 'New Zealand' },
-];
-
 const CSS = `
   *{box-sizing:border-box;margin:0;padding:0;}
   body{background:#030712;}
@@ -66,12 +18,9 @@ const CSS = `
   .btn-ghost:hover{background:rgba(30,58,138,0.35)!important;}
   .btn-guest{transition:all 0.2s;}
   .btn-guest:hover:not(:disabled){transform:translateY(-1px);box-shadow:0 8px 24px rgba(16,185,129,0.3);}
-  .method-card{transition:all 0.2s;cursor:pointer;}
-  .method-card:hover{border-color:#3b82f6!important;background:rgba(59,130,246,0.1)!important;transform:translateY(-2px);}
   .divider-line{flex:1;height:1px;background:rgba(30,58,138,0.4);}
   .otp-digit{transition:border-color 0.2s,box-shadow 0.2s;}
   .otp-digit:focus{border-color:#3b82f6!important;box-shadow:0 0 0 3px rgba(59,130,246,0.15)!important;outline:none;}
-  select option{background:#0d1b3e;color:#e0e8ff;}
 `;
 
 const Spinner = () => (
@@ -90,22 +39,15 @@ export default function AuthPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  // Forgot password state
-  // step: null | 'method' | 'email-send' | 'phone-send' | 'otp-email' | 'otp-phone' | 'reset-email' | 'reset-phone-email'
+  // Forgot password state — steps: null | 'email-send' | 'otp-email'
   const [forgotStep, setForgotStep] = useState(null);
   const [forgotEmail, setForgotEmail] = useState('');
-  const [forgotCountry, setForgotCountry] = useState(COUNTRY_CODES[3]); // India default
-  const [forgotPhone, setForgotPhone] = useState('');
   const [forgotOtp, setForgotOtp] = useState(['', '', '', '', '', '']);
   const [forgotNewPw, setForgotNewPw] = useState('');
   const [forgotConfirmPw, setForgotConfirmPw] = useState('');
   const [forgotError, setForgotError] = useState('');
   const [forgotSuccess, setForgotSuccess] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
-  // For phone flow: after OTP verified, ask for account email to reset
-  const [forgotAccountEmail, setForgotAccountEmail] = useState('');
-  const [showCountryList, setShowCountryList] = useState(false);
-  const [countrySearch, setCountrySearch] = useState('');
 
   const handleLogin = async () => {
     if (!email.trim() || !password.trim()) { setError('Please enter email and password.'); return; }
@@ -147,9 +89,8 @@ export default function AuthPage() {
 
   // ── Forgot password handlers ──────────────────────────────────────────────
   const resetForgot = () => {
-    setForgotStep(null); setForgotEmail(''); setForgotPhone(''); setForgotOtp(['', '', '', '', '', '']);
+    setForgotStep(null); setForgotEmail(''); setForgotOtp(['', '', '', '', '', '']);
     setForgotNewPw(''); setForgotConfirmPw(''); setForgotError(''); setForgotSuccess('');
-    setForgotAccountEmail(''); setCountrySearch(''); setShowCountryList(false);
   };
 
   const sendEmailOtp = async () => {
@@ -164,23 +105,6 @@ export default function AuthPage() {
       if (!res.ok) { setForgotError(data.error || 'Failed to send OTP.'); return; }
       setForgotSuccess('OTP sent! Check your inbox.');
       setForgotStep('otp-email');
-    } catch { setForgotError('Network error. Please try again.'); }
-    finally { setForgotLoading(false); }
-  };
-
-  const sendPhoneOtp = async () => {
-    if (!forgotPhone.trim()) { setForgotError('Please enter your phone number.'); return; }
-    const fullPhone = forgotCountry.code + forgotPhone.trim().replace(/^0/, '');
-    setForgotLoading(true); setForgotError('');
-    try {
-      const res = await fetch(`${API_BASE}/auth/forgot/send-phone`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: fullPhone }),
-      });
-      const data = await res.json();
-      if (!res.ok) { setForgotError(data.error || 'Failed to send OTP.'); return; }
-      setForgotSuccess('OTP sent via SMS!');
-      setForgotStep('otp-phone');
     } catch { setForgotError('Network error. Please try again.'); }
     finally { setForgotLoading(false); }
   };
@@ -207,45 +131,6 @@ export default function AuthPage() {
     finally { setForgotLoading(false); }
   };
 
-  const verifyPhoneOtp = async () => {
-    const otp = forgotOtp.join('');
-    if (otp.length < 6) { setForgotError('Please enter the 6-digit OTP.'); return; }
-    const fullPhone = forgotCountry.code + forgotPhone.trim().replace(/^0/, '');
-    setForgotLoading(true); setForgotError('');
-    try {
-      const res = await fetch(`${API_BASE}/auth/forgot/verify-otp`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: fullPhone, otp }),
-      });
-      const data = await res.json();
-      if (!res.ok) { setForgotError(data.error || 'Incorrect OTP.'); return; }
-      setForgotSuccess('Phone verified!');
-      setForgotStep('reset-phone-email');
-    } catch { setForgotError('Network error. Please try again.'); }
-    finally { setForgotLoading(false); }
-  };
-
-  const resetWithPhone = async () => {
-    if (!forgotAccountEmail.trim()) { setForgotError('Please enter your account email.'); return; }
-    if (!forgotNewPw) { setForgotError('Please enter a new password.'); return; }
-    if (forgotNewPw.length < 6) { setForgotError('Password must be at least 6 characters.'); return; }
-    if (forgotNewPw !== forgotConfirmPw) { setForgotError('Passwords do not match.'); return; }
-    const fullPhone = forgotCountry.code + forgotPhone.trim().replace(/^0/, '');
-    setForgotLoading(true); setForgotError('');
-    try {
-      const res = await fetch(`${API_BASE}/auth/forgot/reset-phone`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: fullPhone, email: forgotAccountEmail.trim(), newPassword: forgotNewPw }),
-      });
-      const data = await res.json();
-      if (!res.ok) { setForgotError(data.error || 'Reset failed.'); return; }
-      localStorage.setItem('token', data.token);
-      loginDataLab({ name: data.user.name, email: data.user.email });
-      navigate('/home');
-    } catch { setForgotError('Network error. Please try again.'); }
-    finally { setForgotLoading(false); }
-  };
-
   // OTP digit input handler
   const handleOtpDigit = (i, val) => {
     if (!/^\d?$/.test(val)) return;
@@ -257,10 +142,6 @@ export default function AuthPage() {
   const handleOtpKeyDown = (i, e) => {
     if (e.key === 'Backspace' && !forgotOtp[i] && i > 0) document.getElementById(`otp-${i - 1}`)?.focus();
   };
-
-  const filteredCountries = COUNTRY_CODES.filter(c =>
-    c.name.toLowerCase().includes(countrySearch.toLowerCase()) || c.code.includes(countrySearch)
-  );
 
   const inputStyle = {
     width: '100%', padding: '11px 14px',
@@ -281,21 +162,8 @@ export default function AuthPage() {
     </button>
   );
 
-  // ── Forgot password panel ─────────────────────────────────────────────────
+  // ── Forgot password panel (email only) ───────────────────────────────────
   const renderForgotPanel = () => {
-    const back = (step) => () => { setForgotError(''); setForgotSuccess(''); setForgotStep(step); };
-
-    const ForgotHeader = ({ title, subtitle, backStep }) => (
-      <div style={{ marginBottom: 20 }}>
-        <button onClick={backStep ? back(backStep) : resetForgot}
-          style={{ background: 'none', border: 'none', color: '#4a5a7a', cursor: 'pointer', fontSize: 12, padding: 0, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
-          ← Back
-        </button>
-        <h2 style={{ fontSize: 20, fontWeight: 800, color: '#e0e8ff', margin: '0 0 4px' }}>{title}</h2>
-        {subtitle && <p style={{ fontSize: 12, color: '#4a5a7a', margin: 0 }}>{subtitle}</p>}
-      </div>
-    );
-
     const ForgotAlert = () => (
       <>
         {forgotError && <div style={{ margin: '0 0 14px', padding: '10px 12px', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: 8, fontSize: 12, color: '#fca5a5' }}>⚠ {forgotError}</div>}
@@ -319,48 +187,15 @@ export default function AuthPage() {
       </div>
     );
 
-    const NewPasswordFields = () => (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 10, margin: '16px 0' }}>
-        <input className="auth-input" value={forgotNewPw} onChange={e => setForgotNewPw(e.target.value)}
-          placeholder="New password (min 6 chars)" type="password" style={inputStyle} />
-        <input className="auth-input" value={forgotConfirmPw} onChange={e => setForgotConfirmPw(e.target.value)}
-          placeholder="Confirm new password" type="password" style={inputStyle} />
-      </div>
-    );
-
-    // Method selection
-    if (forgotStep === 'method') return (
-      <div>
-        <ForgotHeader title="Reset Password" subtitle="Choose how you'd like to receive your OTP" />
-        <ForgotAlert />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {[
-            { icon: '📧', title: 'Email OTP', desc: 'Receive a 6-digit code at your registered email address', step: 'email-send', color: '#6fa3ef', border: 'rgba(59,130,246,0.3)' },
-            { icon: '📱', title: 'Phone OTP', desc: 'Receive a 6-digit code via SMS to your phone number', step: 'phone-send', color: '#34d399', border: 'rgba(16,185,129,0.3)' },
-          ].map(m => (
-            <div key={m.step} className="method-card"
-              onClick={() => { setForgotError(''); setForgotSuccess(''); setForgotStep(m.step); }}
-              style={{
-                padding: '16px 18px', background: 'rgba(14,24,58,0.6)',
-                border: `1px solid ${m.border}`, borderRadius: 14,
-                display: 'flex', alignItems: 'center', gap: 14,
-              }}>
-              <span style={{ fontSize: 28 }}>{m.icon}</span>
-              <div>
-                <div style={{ fontSize: 14, fontWeight: 700, color: m.color, marginBottom: 3 }}>{m.title}</div>
-                <div style={{ fontSize: 12, color: '#4a5a7a', lineHeight: 1.4 }}>{m.desc}</div>
-              </div>
-              <span style={{ marginLeft: 'auto', color: '#2a3a5a', fontSize: 16 }}>→</span>
-            </div>
-          ))}
-        </div>
-      </div>
-    );
-
-    // Email — enter address
+    // Step 1 — enter email
     if (forgotStep === 'email-send') return (
       <div>
-        <ForgotHeader title="Email OTP" subtitle="Enter the email address linked to your account" backStep="method" />
+        <button onClick={resetForgot}
+          style={{ background: 'none', border: 'none', color: '#4a5a7a', cursor: 'pointer', fontSize: 12, padding: 0, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
+          ← Back to login
+        </button>
+        <h2 style={{ fontSize: 20, fontWeight: 800, color: '#e0e8ff', margin: '0 0 4px' }}>Reset Password</h2>
+        <p style={{ fontSize: 12, color: '#4a5a7a', margin: '0 0 18px' }}>Enter your account email and we'll send you a 6-digit OTP.</p>
         <ForgotAlert />
         <input className="auth-input" value={forgotEmail} onChange={e => setForgotEmail(e.target.value)}
           onKeyDown={e => e.key === 'Enter' && sendEmailOtp()}
@@ -369,119 +204,31 @@ export default function AuthPage() {
       </div>
     );
 
-    // Phone — country + number
-    if (forgotStep === 'phone-send') return (
-      <div>
-        <ForgotHeader title="Phone OTP" subtitle="Select your country and enter your mobile number" backStep="method" />
-        <ForgotAlert />
-        <div style={{ position: 'relative', marginBottom: 10 }}>
-          <div onClick={() => setShowCountryList(!showCountryList)}
-            style={{
-              ...inputStyle, display: 'flex', alignItems: 'center', gap: 10,
-              cursor: 'pointer', userSelect: 'none', padding: '11px 14px',
-            }}>
-            <span style={{ fontSize: 18 }}>{forgotCountry.flag}</span>
-            <span style={{ color: '#8899bb', fontSize: 13 }}>{forgotCountry.name}</span>
-            <span style={{ color: '#6fa3ef', fontWeight: 700, marginLeft: 4 }}>{forgotCountry.code}</span>
-            <span style={{ marginLeft: 'auto', color: '#4a5a7a', fontSize: 11 }}>{showCountryList ? '▲' : '▼'}</span>
-          </div>
-          {showCountryList && (
-            <div style={{
-              position: 'absolute', top: 'calc(100% + 4px)', left: 0, right: 0, zIndex: 100,
-              background: 'rgba(5,11,26,0.99)', border: '1px solid rgba(30,58,138,0.5)',
-              borderRadius: 10, overflow: 'hidden', boxShadow: '0 16px 48px rgba(0,0,0,0.7)',
-            }}>
-              <div style={{ padding: '8px 10px', borderBottom: '1px solid rgba(30,58,138,0.3)' }}>
-                <input value={countrySearch} onChange={e => setCountrySearch(e.target.value)}
-                  placeholder="Search country..." autoFocus
-                  style={{ ...inputStyle, padding: '7px 10px', fontSize: 13, borderRadius: 7 }} />
-              </div>
-              <div style={{ maxHeight: 200, overflowY: 'auto' }}>
-                {filteredCountries.map((c, i) => (
-                  <div key={i} onClick={() => { setForgotCountry(c); setShowCountryList(false); setCountrySearch(''); }}
-                    style={{
-                      padding: '9px 14px', display: 'flex', alignItems: 'center', gap: 10,
-                      cursor: 'pointer', fontSize: 13, color: '#c8d8f0',
-                      background: forgotCountry.name === c.name ? 'rgba(30,58,138,0.3)' : 'transparent',
-                      transition: 'background 0.1s',
-                    }}
-                    onMouseEnter={e => e.currentTarget.style.background = 'rgba(30,58,138,0.2)'}
-                    onMouseLeave={e => e.currentTarget.style.background = forgotCountry.name === c.name ? 'rgba(30,58,138,0.3)' : 'transparent'}>
-                    <span style={{ fontSize: 18 }}>{c.flag}</span>
-                    <span style={{ flex: 1 }}>{c.name}</span>
-                    <span style={{ color: '#6fa3ef', fontFamily: 'monospace', fontWeight: 700 }}>{c.code}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-        </div>
-
-        <div style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-          <div style={{ ...inputStyle, width: 80, textAlign: 'center', flexShrink: 0, color: '#6fa3ef', fontWeight: 700, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, borderRadius: 10 }}>
-            {forgotCountry.code}
-          </div>
-          <input className="auth-input" value={forgotPhone} onChange={e => setForgotPhone(e.target.value.replace(/\D/g, ''))}
-            onKeyDown={e => e.key === 'Enter' && sendPhoneOtp()}
-            placeholder="Phone number" inputMode="tel"
-            style={{ ...inputStyle, flex: 1 }} />
-        </div>
-        {btnPrimary('Send OTP via SMS →', sendPhoneOtp)}
-      </div>
-    );
-
-    // Email OTP verification + new password
+    // Step 2 — enter OTP + new password
     if (forgotStep === 'otp-email') return (
       <div>
-        <ForgotHeader title="Enter OTP" subtitle={`Code sent to ${forgotEmail}`} backStep="email-send" />
+        <button onClick={() => { setForgotError(''); setForgotSuccess(''); setForgotStep('email-send'); }}
+          style={{ background: 'none', border: 'none', color: '#4a5a7a', cursor: 'pointer', fontSize: 12, padding: 0, marginBottom: 16, display: 'flex', alignItems: 'center', gap: 6 }}>
+          ← Change email
+        </button>
+        <h2 style={{ fontSize: 20, fontWeight: 800, color: '#e0e8ff', margin: '0 0 4px' }}>Enter OTP</h2>
+        <p style={{ fontSize: 12, color: '#4a5a7a', margin: '0 0 4px' }}>6-digit code sent to <strong style={{ color: '#6fa3ef' }}>{forgotEmail}</strong></p>
         <ForgotAlert />
-        <p style={{ fontSize: 12, color: '#4a5a7a', marginBottom: 4 }}>Enter the 6-digit code from your email:</p>
         <OtpInputs />
-        <p style={{ fontSize: 12, color: '#4a5a7a', marginBottom: 4, marginTop: 8 }}>Set your new password:</p>
-        <NewPasswordFields />
-        {btnPrimary('Reset Password →', verifyOtpAndReset)}
-        <div style={{ textAlign: 'center', marginTop: 12 }}>
-          <span onClick={() => { setForgotOtp(['','','','','','']); sendEmailOtp(); }}
-            style={{ fontSize: 12, color: '#4a6a9a', cursor: 'pointer', textDecoration: 'underline' }}>
-            Resend OTP
-          </span>
-        </div>
-      </div>
-    );
-
-    // Phone OTP verification
-    if (forgotStep === 'otp-phone') return (
-      <div>
-        <ForgotHeader title="Enter OTP" subtitle={`SMS sent to ${forgotCountry.code} ${forgotPhone}`} backStep="phone-send" />
-        <ForgotAlert />
-        <p style={{ fontSize: 12, color: '#4a5a7a', marginBottom: 4 }}>Enter the 6-digit code from your SMS:</p>
-        <OtpInputs />
-        <div style={{ marginTop: 8 }}>
-          {btnPrimary('Verify OTP →', verifyPhoneOtp)}
-        </div>
-        <div style={{ textAlign: 'center', marginTop: 12 }}>
-          <span onClick={() => { setForgotOtp(['','','','','','']); sendPhoneOtp(); }}
-            style={{ fontSize: 12, color: '#4a6a9a', cursor: 'pointer', textDecoration: 'underline' }}>
-            Resend OTP
-          </span>
-        </div>
-      </div>
-    );
-
-    // Phone flow: after OTP verified, enter account email + new password
-    if (forgotStep === 'reset-phone-email') return (
-      <div>
-        <ForgotHeader title="Reset Password" subtitle="Phone verified. Enter your account email and new password." />
-        <ForgotAlert />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, margin: '0 0 14px' }}>
-          <input className="auth-input" value={forgotAccountEmail} onChange={e => setForgotAccountEmail(e.target.value)}
-            placeholder="Account email address" type="email" style={inputStyle} />
+        <p style={{ fontSize: 12, color: '#4a5a7a', margin: '8px 0 4px' }}>Set your new password:</p>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, margin: '8px 0 14px' }}>
           <input className="auth-input" value={forgotNewPw} onChange={e => setForgotNewPw(e.target.value)}
             placeholder="New password (min 6 chars)" type="password" style={inputStyle} />
           <input className="auth-input" value={forgotConfirmPw} onChange={e => setForgotConfirmPw(e.target.value)}
             placeholder="Confirm new password" type="password" style={inputStyle} />
         </div>
-        {btnPrimary('Reset Password →', resetWithPhone)}
+        {btnPrimary('Reset Password →', verifyOtpAndReset)}
+        <div style={{ textAlign: 'center', marginTop: 12 }}>
+          <span onClick={() => { setForgotOtp(['','','','','','']); setForgotError(''); sendEmailOtp(); }}
+            style={{ fontSize: 12, color: '#4a6a9a', cursor: 'pointer', textDecoration: 'underline' }}>
+            Resend OTP
+          </span>
+        </div>
       </div>
     );
 
@@ -567,7 +314,7 @@ export default function AuthPage() {
                 {/* Forgot password link */}
                 {tab === 'login' && (
                   <div style={{ textAlign: 'right', marginTop: -6, marginBottom: 12 }}>
-                    <span onClick={() => { setForgotStep('method'); setForgotError(''); setForgotSuccess(''); }}
+                    <span onClick={() => { setForgotStep('email-send'); setForgotError(''); setForgotSuccess(''); }}
                       style={{ fontSize: 12, color: '#4a6a9a', cursor: 'pointer', textDecoration: 'underline' }}>
                       Forgot password?
                     </span>
