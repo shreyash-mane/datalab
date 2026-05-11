@@ -88,8 +88,8 @@ export default function PipelineBuilder() {
   if (loading) return <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100%', color:'#3b82f6', fontSize:24 }}>⏳</div>;
 
   const S = {
-    container: { display:'flex', height:'calc(100vh - 52px)', background:'#0f1117', color:'#e5e7eb', fontFamily:"'Syne',sans-serif" },
-    sidebar: { width:300, flexShrink:0, borderRight:'1px solid #252d40', background:'#0f1117', display:'flex', flexDirection:'column' },
+    container: { display:'flex', height:'calc(100vh - 52px)', background:'var(--page-bg)', color:'var(--page-text)', fontFamily:"'Syne',sans-serif" },
+    sidebar: { width:300, flexShrink:0, borderRight:'1px solid var(--card-border)', background:'var(--card-bg)', display:'flex', flexDirection:'column' },
     sideHead: { padding:14, borderBottom:'1px solid #252d40' },
     stepPill: (active, hasWarning) => ({ borderRadius:8, border: active ? '1px solid rgba(59,130,246,0.4)' : hasWarning ? '1px solid rgba(245,158,11,0.3)' : '1px solid transparent', background: active ? 'rgba(59,130,246,0.08)' : 'transparent', marginBottom:2, overflow:'hidden' }),
     main: { flex:1, overflowY:'auto', padding:24 },

@@ -79,9 +79,9 @@ export default function DebuggerPage() {
   );
 
   return (
-    <div style={{ display:'flex', height:'calc(100vh - 52px)', background:'#0f1117', color:'#e5e7eb', fontFamily:"'Syne',sans-serif" }}>
+    <div style={{ display:'flex', height:'calc(100vh - 52px)', background:'var(--page-bg)', color:'var(--page-text)', fontFamily:"'Syne',sans-serif" }}>
       {/* Left: step sidebar */}
-      <div style={{ width:240, flexShrink:0, borderRight:'1px solid #252d40', background:'#0f1117', display:'flex', flexDirection:'column' }}>
+      <div style={{ width:240, flexShrink:0, borderRight:'1px solid var(--card-border)', background:'var(--card-bg)', display:'flex', flexDirection:'column' }}>
         <div style={{ padding:12, borderBottom:'1px solid #252d40' }}>
           <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8 }}>
             <button onClick={() => navigate("/debugger/pipeline/" + pid)} style={{ background:'none', border:'none', color:'#6b7280', cursor:'pointer', fontSize:14, padding:2 }}>←</button>
@@ -161,7 +161,7 @@ export default function DebuggerPage() {
       </div>
 
       {/* Right: tabs */}
-      <div style={{ width:300, flexShrink:0, borderLeft:'1px solid #252d40', background:'#0f1117', display:'flex', flexDirection:'column' }}>
+      <div style={{ width:300, flexShrink:0, borderLeft:'1px solid var(--card-border)', background:'var(--card-bg)', display:'flex', flexDirection:'column' }}>
         <div style={{ display:'flex', borderBottom:'1px solid #252d40', flexShrink:0 }}>
           {tabBtn('anomalies', 'Anomalies', anomalies.length)}
           {tabBtn('explanations', 'Explain', explanations.length)}

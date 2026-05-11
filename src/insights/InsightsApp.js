@@ -389,7 +389,7 @@ export default function InsightsApp() {
 
   // ── Layout ────────────────────────────────────────────────────────────────
   return (
-    <div style={{minHeight:'calc(100vh - 52px)',background:'#030712',fontFamily:"'Syne',sans-serif",color:'#e0e8ff'}}>
+    <div style={{minHeight:'calc(100vh - 52px)',background:'var(--page-bg)',fontFamily:"'Syne',sans-serif",color:'var(--page-text)'}}>
       <style>{CSS}</style>
 
       {/* Header */}

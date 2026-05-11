@@ -163,7 +163,7 @@ export default function UploadPage() {
     : {};
 
   const s = {
-    sidebar: { width:280, flexShrink:0, borderRight:'1px solid #252d40', background:'#0f1117', display:'flex', flexDirection:'column', height:'calc(100vh - 52px)', overflow:'hidden' },
+    sidebar: { width:280, flexShrink:0, borderRight:'1px solid var(--card-border)', background:'var(--card-bg)', display:'flex', flexDirection:'column', height:'calc(100vh - 52px)', overflow:'hidden' },
     sideHead: { padding:16, borderBottom:'1px solid #252d40' },
     dropzone: { border:'2px dashed #252d40', borderRadius:12, padding:20, display:'flex', flexDirection:'column', alignItems:'center', gap:8, cursor:'pointer', transition:'all 0.2s', background: dragOver ? 'rgba(59,130,246,0.08)' : 'transparent', borderColor: dragOver ? '#3b82f6' : '#252d40' },
     main: { flex:1, overflowY:'auto', padding:24 },
@@ -171,7 +171,7 @@ export default function UploadPage() {
 
   return (
     <>
-    <div style={{ display:'flex', height:'calc(100vh - 52px)', fontFamily:"'Syne', sans-serif", background:'#0f1117', color:'#e5e7eb' }}>
+    <div style={{ display:'flex', height:'calc(100vh - 52px)', fontFamily:"'Syne', sans-serif", background:'var(--page-bg)', color:'var(--page-text)' }}>
       {/* Sidebar */}
       <div style={s.sidebar}>
         <div style={s.sideHead}>

@@ -2,7 +2,7 @@ import { useNavigate } from 'react-router-dom';
 
 const CSS = `
   *{box-sizing:border-box;margin:0;padding:0;}
-  body{background:#030712;}
+  body{background:var(--body-bg);}
   @keyframes fadeUp{from{opacity:0;transform:translateY(24px)}to{opacity:1;transform:translateY(0)}}
   @keyframes float{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
   @keyframes pulse{0%,100%{opacity:0.5}50%{opacity:1}}
@@ -28,7 +28,7 @@ export default function LandingPage() {
   const navigate = useNavigate();
   // Remove SharedNav from LandingPage — it's now injected by App.js via WithNav
   return (
-    <div style={{minHeight:'100vh',background:'radial-gradient(ellipse at 20% 50%,rgba(29,78,216,0.07) 0%,transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(139,92,246,0.07) 0%,transparent 60%),radial-gradient(ellipse at 50% 90%,rgba(16,185,129,0.05) 0%,transparent 60%),#030712',fontFamily:"'Syne',sans-serif",color:'#e0e8ff',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'40px 20px',position:'relative',overflow:'hidden'}}>
+    <div style={{minHeight:'100vh',background:'radial-gradient(ellipse at 20% 50%,rgba(29,78,216,0.07) 0%,transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(139,92,246,0.07) 0%,transparent 60%),radial-gradient(ellipse at 50% 90%,rgba(16,185,129,0.05) 0%,transparent 60%),var(--page-bg)',fontFamily:"'Syne',sans-serif",color:'var(--page-text)',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'40px 20px',position:'relative',overflow:'hidden'}}>
       <style>{CSS}</style>
       <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
       <div style={{position:'absolute',inset:0,backgroundImage:'linear-gradient(rgba(30,58,138,0.06) 1px,transparent 1px),linear-gradient(90deg,rgba(30,58,138,0.06) 1px,transparent 1px)',backgroundSize:'60px 60px',pointerEvents:'none'}}/>

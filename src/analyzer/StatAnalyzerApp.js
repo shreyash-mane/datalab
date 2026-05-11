@@ -3,16 +3,16 @@ import { statUpload, statAnalyzeColumn } from '../debugger/api/client';
 
 // ─── Theme tokens ─────────────────────────────────────────────────────────────
 const C = {
-  bg:       '#030712',
-  surface:  '#0a0f18',
-  surface2: '#0d1520',
-  border:   '#1e2a3a',
+  bg:       'var(--page-bg)',
+  surface:  'var(--card-bg)',
+  surface2: 'var(--card-bg-2)',
+  border:   'var(--card-border)',
   borderA:  'rgba(245,158,11,0.22)',
   amber:    '#f59e0b',
   amber2:   '#fbbf24',
-  text:     '#e5e7eb',
-  text2:    '#9ca3af',
-  text3:    '#4b5563',
+  text:     'var(--page-text)',
+  text2:    'var(--page-subtext)',
+  text3:    'var(--page-muted)',
   green:    '#10b981',
   red:      '#ef4444',
   purple:   '#8b5cf6',

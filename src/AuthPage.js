@@ -182,7 +182,7 @@ export default function AuthPage() {
 
   const EyeBtn = ({ show, onToggle }) => (
     <button type="button" className="pw-eye" onClick={onToggle} tabIndex={-1}>
-      {show ? '🙈' : '👁'}
+      {show ? '👁' : '🙈'}
     </button>
   );
 

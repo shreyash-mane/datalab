@@ -434,7 +434,7 @@ function VisualCard({ chart, idx, allCols, numCols, catCols, baseRows, onUpdate,
   const previewH = chart.type === 'kpi' ? 140 : chart.type === 'table' ? 280 : chart.type === 'matrix' ? 240 : 240;
 
   return (
-    <div style={{ background:'#0f1117', border:'1px solid #252d40', borderRadius:14, overflow:'hidden', display:'flex', flexDirection:'column' }}>
+    <div style={{ background:'var(--card-bg)', border:'1px solid var(--card-border)', borderRadius:14, overflow:'hidden', display:'flex', flexDirection:'column' }}>
       {/* Header */}
       <div style={{ padding:'9px 12px', borderBottom:'1px solid #252d40', display:'flex', alignItems:'center', gap:8 }}>
         <span style={{ fontSize:14 }}>{vtype.icon}</span>
@@ -735,10 +735,10 @@ export default function VisualizerApp() {
   const resetAll = () => { setCharts([]); setCalcFields([]); setGlobalFilters([]); };
 
   return (
-    <div style={{ display:'flex', height:'calc(100vh - 52px)', background:'#030712', color:'#e5e7eb', fontFamily:"'Syne',sans-serif", overflow:'hidden' }}>
+    <div style={{ display:'flex', height:'calc(100vh - 52px)', background:'var(--page-bg)', color:'var(--page-text)', fontFamily:"'Syne',sans-serif", overflow:'hidden' }}>
 
       {/* ── Sidebar ── */}
-      <div style={{ width:268, flexShrink:0, borderRight:'1px solid rgba(16,185,129,0.2)', background:'#050b14', display:'flex', flexDirection:'column', overflowY:'auto' }}>
+      <div style={{ width:268, flexShrink:0, borderRight:'1px solid rgba(16,185,129,0.2)', background:'var(--card-bg)', display:'flex', flexDirection:'column', overflowY:'auto' }}>
         <div style={{ padding:14, borderBottom:'1px solid rgba(16,185,129,0.1)' }}>
           <h2 style={{ margin:'0 0 12px', fontSize:13, fontWeight:700, color:'#6ee7b7', letterSpacing:0.5 }}>📊 Data Visualizer</h2>
 

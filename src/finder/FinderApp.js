@@ -78,7 +78,7 @@ const GLOBAL_CSS = `
   .hover-glow { transition: all 0.2s ease; }
   .hover-glow:hover { box-shadow: 0 0 22px rgba(59,130,246,0.25); border-color: #3b82f6 !important; transform: scale(1.02); }
   input:focus, textarea:focus, select:focus { border-color: #3b82f6 !important; box-shadow: 0 0 0 3px rgba(59,130,246,0.12) !important; }
-  ::-webkit-scrollbar { width:6px; } ::-webkit-scrollbar-track { background:#050b1a; } ::-webkit-scrollbar-thumb { background:#1e3a8a; border-radius:3px; }
+  ::-webkit-scrollbar { width:6px; } ::-webkit-scrollbar-track { background:var(--scrollbar-track); } ::-webkit-scrollbar-thumb { background:var(--scrollbar-thumb); border-radius:3px; }
   @media(max-width:640px){
     .search-row{flex-direction:column!important}
     .factor-grid{grid-template-columns:1fr 1fr!important}
@@ -199,7 +199,7 @@ export default function FinderApp() {
   if (authLoading) return <Loading />;
 
   return (
-    <div style={{ minHeight: "100vh", width: "100%", maxWidth: "100%", overflowX: "hidden", background: "#050b1a", color: "#e0e8ff", fontFamily: "'Syne',sans-serif" }}>
+    <div style={{ minHeight: "100vh", width: "100%", maxWidth: "100%", overflowX: "hidden", background: "var(--page-bg)", color: "var(--page-text)", fontFamily: "'Syne',sans-serif" }}>
       <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
       <style>{GLOBAL_CSS}</style>
       <div style={{ position: "fixed", inset: 0, backgroundImage: "linear-gradient(rgba(30,58,138,0.06) 1px,transparent 1px),linear-gradient(90deg,rgba(30,58,138,0.06) 1px,transparent 1px)", backgroundSize: "40px 40px", pointerEvents: "none", zIndex: 0 }} />
@@ -363,6 +363,7 @@ function SearchPage({ user, setPage }) {
               <input value={query} onChange={e => setQuery(e.target.value)} onKeyDown={e => e.key === "Enter" && search()}
                 placeholder='e.g. "climate data" or "mental health AND depression"'
                 disabled={rateInfo?.remaining === 0}
+                autoComplete="off" autoCorrect="off" spellCheck="false"
                 style={{ ...S.input, paddingLeft: 44, opacity: rateInfo?.remaining === 0 ? 0.5 : 1 }} />
               <span style={{ position: "absolute", left: 14, top: "50%", transform: "translateY(-50%)", fontSize: 18, opacity: 0.35 }}>⌕</span>
             </div>
@@ -379,6 +380,7 @@ function SearchPage({ user, setPage }) {
               <textarea value={ideaQuery} onChange={e => setIdeaQuery(e.target.value)}
                 placeholder="e.g. I want to detect depression from Reddit posts in Hindi using NLP..."
                 rows={3}
+                autoComplete="off"
                 style={{ ...S.input, resize: "none", lineHeight: 1.6, paddingLeft: 44 }} />
               <span style={{ position: "absolute", left: 14, top: 14, fontSize: 18, opacity: 0.35 }}>💡</span>
             </div>
