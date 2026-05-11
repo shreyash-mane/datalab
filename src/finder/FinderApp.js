@@ -237,6 +237,7 @@ export default function FinderApp() {
 // SEARCH PAGE
 // ════════════════════════════════════════════════════════════════════════════
 function SearchPage({ user, setPage }) {
+  const { searchesLeft, consumeSearch } = useDataLabStore();
   const [mode, setMode] = useState("search");
   const [query, setQuery] = useState("");
   const [ideaQuery, setIdeaQuery] = useState("");
@@ -266,11 +267,16 @@ function SearchPage({ user, setPage }) {
   const search = async (liveSearch = false) => {
     const q = mode === "idea" ? ideaQuery : query;
     if (!q.trim() || loading) return;
+    if (searchesLeft <= 0) {
+      setError("You've used all your searches. Please log in for more searches.");
+      return;
+    }
     setLoading(true); setError(null); setResults(null); setSearched(q); setExpanded(null); setQueryType(null); setSearchMode(null);
     try {
       const res = await apiFetch("/api/search", { method: "POST", body: JSON.stringify({ query: q.trim(), liveSearch: liveSearch === true }) });
       const data = await res.json();
       if (!res.ok) { setError(data.error || "Search failed."); return; }
+      consumeSearch();
       setResults(data.datasets);
       setQueryType(data.queryType);
       setSearchMode(data.mode);

@@ -26,6 +26,7 @@ const CSS = `
 
 export default function LandingPage() {
   const navigate = useNavigate();
+  // Remove SharedNav from LandingPage — it's now injected by App.js via WithNav
   return (
     <div style={{minHeight:'100vh',background:'radial-gradient(ellipse at 20% 50%,rgba(29,78,216,0.07) 0%,transparent 60%),radial-gradient(ellipse at 80% 20%,rgba(139,92,246,0.07) 0%,transparent 60%),radial-gradient(ellipse at 50% 90%,rgba(16,185,129,0.05) 0%,transparent 60%),#030712',fontFamily:"'Syne',sans-serif",color:'#e0e8ff',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',padding:'40px 20px',position:'relative',overflow:'hidden'}}>
       <style>{CSS}</style>
