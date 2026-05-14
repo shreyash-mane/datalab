@@ -339,7 +339,6 @@ export default function InsightsApp() {
   const [selected,     setSelected]     = useState(null);   // insight object from list
   const [detail,       setDetail]       = useState(null);   // full detail from /insight-details
   const [customChart,  setCustomChart]  = useState(null);   // custom preview data
-  const [dragOver,     setDragOver]     = useState(false);
   const [uploading,    setUploading]    = useState(false);
   const [detecting,    setDetecting]    = useState(false);
   const [loadingDetail,setLoadingDetail]= useState(false);
@@ -359,12 +358,6 @@ export default function InsightsApp() {
     } catch(e) { setUploadErr(e.message); }
     finally { setUploading(false); }
   }, []);
-
-  const onDrop = useCallback(e => {
-    e.preventDefault(); setDragOver(false);
-    const f = e.dataTransfer.files[0];
-    if (f) handleFile(f);
-  }, [handleFile]);
 
   const onFileInput = e => { if (e.target.files[0]) handleFile(e.target.files[0]); };
 

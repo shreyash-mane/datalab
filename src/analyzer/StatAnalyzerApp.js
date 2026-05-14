@@ -288,8 +288,6 @@ export default function StatAnalyzerApp() {
   const [analyzing, setAnalyzing] = useState(false);
   const [analyzeErr, setAnalyzeErr] = useState('');
 
-  const [dragOver, setDragOver] = useState(false);
-
   // ── Derived: filtered column list ──────────────────────────────────────────
   const filteredCols = useMemo(() => {
     if (typeFilter === 'all') return columns;
@@ -327,12 +325,6 @@ export default function StatAnalyzerApp() {
       setUploading(false);
     }
   }, []);
-
-  const handleDrop = e => {
-    e.preventDefault(); setDragOver(false);
-    const f = e.dataTransfer.files[0];
-    if (f) handleFile(f);
-  };
 
   // ── Analyze selected column ─────────────────────────────────────────────────
   const handleAnalyze = async () => {

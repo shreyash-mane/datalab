@@ -103,13 +103,11 @@ export default function UploadPage() {
   const [backendDown, setBackendDown] = useState(false);
   const [preview, setPreview] = useState(null);
   const [previewFile, setPreviewFile] = useState(null);
-  const [dragOver, setDragOver] = useState(false);
+  const [dragOver] = useState(false);
   const [newPipelineName, setNewPipelineName] = useState('');
   const [creatingPipeline, setCreatingPipeline] = useState(false);
   const [showAutoClean, setShowAutoClean] = useState(false);
   const [showFinderBanner, setShowFinderBanner] = useState(handoff?.origin === 'finder');
-  const fileInputRef = { current: null };
-
   useEffect(() => {
     listDatasets()
       .then(all => {
@@ -138,13 +136,6 @@ export default function UploadPage() {
       setActiveFile(file);
     } catch(e) { setError(e.message); }
     finally { setUploading(false); }
-  };
-
-  const handleDrop = (e) => {
-    e.preventDefault();
-    setDragOver(false);
-    const file = e.dataTransfer.files[0];
-    if (file) handleFile(file);
   };
 
   const handleDelete = async (ds, e) => {

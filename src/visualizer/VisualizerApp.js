@@ -643,7 +643,6 @@ export default function VisualizerApp() {
   const [numericCols, setNumericCols] = useState([]);
   const [catCols, setCatCols] = useState([]);
   const [fileName, setFileName] = useState('');
-  const [dragOver, setDragOver] = useState(false);
   const [charts, setCharts] = useState([]);
   const [calcFields, setCalcFields] = useState([]);
   const [globalFilters, setGlobalFilters] = useState([]);
@@ -713,12 +712,6 @@ export default function VisualizerApp() {
     };
     reader.readAsText(file);
   }, []);
-
-  const handleDrop = e => {
-    e.preventDefault(); setDragOver(false);
-    const f = e.dataTransfer.files[0];
-    if (f) handleFile(f);
-  };
 
   const addChart = (type = 'bar') => {
     const xGuess = catCols[0] || columns[0] || '';
