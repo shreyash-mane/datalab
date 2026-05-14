@@ -24,6 +24,17 @@ const CSS = `
   .pw-wrap .auth-input{padding-right:40px;}
   .pw-eye{position:absolute;right:12px;background:none;border:none;cursor:pointer;color:var(--input-placeholder);font-size:16px;padding:2px;line-height:1;transition:color 0.15s;}
   .pw-eye:hover{color:var(--page-text);}
+
+  /* ── Responsive layout ── */
+  .auth-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;}
+  .otp-row{display:flex;gap:8px;justify-content:center;margin:16px 0;}
+
+  @media(max-width:767px){
+    .auth-grid{grid-template-columns:1fr !important;}
+    .auth-card{padding:20px !important;}
+    .otp-row{gap:5px !important;}
+    .otp-digit{width:38px !important;height:46px !important;font-size:18px !important;}
+  }
 `;
 
 const Spinner = () => (
@@ -217,7 +228,7 @@ export default function AuthPage() {
     );
 
     const OtpInputs = () => (
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'center', margin: '16px 0' }}>
+      <div className="otp-row">
         {forgotOtp.map((d, i) => (
           <input key={i} id={`otp-${i}`} className="otp-digit"
             value={d}
@@ -290,8 +301,8 @@ export default function AuthPage() {
   return (
     <div style={{
       minHeight: '100vh', background: 'var(--page-bg)',
-      display: 'flex', alignItems: 'center', justifyContent: 'center',
-      padding: '20px', fontFamily: "'Syne',sans-serif", position: 'relative', overflow: 'hidden',
+      display: 'flex', alignItems: 'flex-start', justifyContent: 'center',
+      padding: '24px 16px 40px', fontFamily: "'Syne',sans-serif", position: 'relative', overflow: 'hidden',
       transition: 'background 0.25s',
     }}>
       <style>{CSS}</style>
@@ -299,8 +310,8 @@ export default function AuthPage() {
 
       {/* Background */}
       <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(30,58,138,0.06) 1px,transparent 1px),linear-gradient(90deg,rgba(30,58,138,0.06) 1px,transparent 1px)', backgroundSize: '50px 50px', pointerEvents: 'none' }} />
-      <div style={{ position: 'absolute', top: '10%', left: '5%', width: 400, height: 400, borderRadius: '50%', background: 'rgba(59,130,246,0.06)', filter: 'blur(80px)', animation: 'pulse 5s ease-in-out infinite', pointerEvents: 'none' }} />
-      <div style={{ position: 'absolute', bottom: '10%', right: '5%', width: 500, height: 500, borderRadius: '50%', background: 'rgba(139,92,246,0.05)', filter: 'blur(100px)', animation: 'pulse 6s ease-in-out infinite 1s', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', top: '5%', left: '-5%', width: '55vw', height: '55vw', maxWidth: 380, maxHeight: 380, borderRadius: '50%', background: 'rgba(59,130,246,0.06)', filter: 'blur(80px)', animation: 'pulse 5s ease-in-out infinite', pointerEvents: 'none' }} />
+      <div style={{ position: 'absolute', bottom: '5%', right: '-5%', width: '55vw', height: '55vw', maxWidth: 420, maxHeight: 420, borderRadius: '50%', background: 'rgba(139,92,246,0.05)', filter: 'blur(100px)', animation: 'pulse 6s ease-in-out infinite 1s', pointerEvents: 'none' }} />
 
       <div style={{ position: 'relative', zIndex: 1, width: '100%', maxWidth: 900, animation: 'fadeUp 0.5s ease forwards' }}>
 
@@ -316,11 +327,11 @@ export default function AuthPage() {
           <p style={{ color: '#4a5a7a', fontSize: 13, fontFamily: "'Space Mono',monospace", letterSpacing: 1 }}>DATA RESEARCH SUITE</p>
         </div>
 
-        {/* Two-column layout */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start' }}>
+        {/* Two-column layout — collapses to single column on mobile */}
+        <div className="auth-grid">
 
           {/* LEFT — Login / Register / Forgot */}
-          <div style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 20, padding: 32, backdropFilter: 'blur(12px)', transition: 'background 0.25s, border-color 0.25s' }}>
+          <div className="auth-card" style={{ background: 'var(--card-bg)', border: '1px solid var(--card-border)', borderRadius: 20, padding: 32, backdropFilter: 'blur(12px)', transition: 'background 0.25s, border-color 0.25s' }}>
 
             {forgotStep ? renderForgotPanel() : (
               <>
@@ -422,7 +433,7 @@ export default function AuthPage() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
 
             {/* Guest card */}
-            <div style={{ background: 'var(--card-bg)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 20, padding: 28, backdropFilter: 'blur(12px)', textAlign: 'center', transition: 'background 0.25s' }}>
+            <div className="auth-card" style={{ background: 'var(--card-bg)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 20, padding: 28, backdropFilter: 'blur(12px)', textAlign: 'center', transition: 'background 0.25s' }}>
               <div style={{ fontSize: 42, marginBottom: 12 }}>🚀</div>
               <h3 style={{ fontSize: 18, fontWeight: 800, color: '#e0e8ff', margin: '0 0 6px' }}>Try Without an Account</h3>
               <p style={{ fontSize: 13, color: '#6b7a9a', lineHeight: 1.6, margin: '0 0 16px' }}>
