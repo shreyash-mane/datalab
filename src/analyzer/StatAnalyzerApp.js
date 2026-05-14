@@ -152,13 +152,13 @@ function NumericalPanel({ r }) {
 
       {/* Central tendency row */}
       <div style={{ marginBottom:6, fontSize:10, color: C.text3, textTransform:'uppercase', letterSpacing:0.8 }}>Central tendency &amp; spread</div>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(5, 1fr)', gap:6, marginBottom:12 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(90px, 1fr))', gap:6, marginBottom:12 }}>
         {grid1.map(s => <StatCard key={s.label} {...s} />)}
       </div>
 
       {/* Range / quartiles row */}
       <div style={{ marginBottom:6, fontSize:10, color: C.text3, textTransform:'uppercase', letterSpacing:0.8 }}>Range &amp; quartiles</div>
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(6, 1fr)', gap:6, marginBottom:14 }}>
+      <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(90px, 1fr))', gap:6, marginBottom:14 }}>
         {grid2.map(s => <StatCard key={s.label} {...s} />)}
       </div>
 
@@ -271,6 +271,7 @@ function CategoricalPanel({ r }) {
 
 // ─── Main App ─────────────────────────────────────────────────────────────────
 export default function StatAnalyzerApp() {
+  const isMobile = window.innerWidth < 768;
   // Upload state
   const [fileId,    setFileId]    = useState(null);
   const [columns,   setColumns]   = useState([]);   // [{name, type}]
@@ -377,30 +378,20 @@ export default function StatAnalyzerApp() {
         </div>
 
         {/* ── Upload zone ──────────────────────────────────────────────── */}
-        <div
-          onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          onClick={() => document.getElementById('sa-file-input').click()}
-          style={{ border:`2px dashed ${dragOver ? C.amber : C.borderA}`, borderRadius:14, padding:'22px 24px', display:'flex', alignItems:'center', gap:16, cursor:'pointer', background: dragOver ? 'rgba(245,158,11,0.04)' : C.surface, transition:'all 0.2s', marginBottom:20 }}>
-          <span style={{ fontSize:28, flexShrink:0 }}>📂</span>
-          <div>
-            {fileMeta ? (
-              <>
-                <div style={{ fontSize:13, fontWeight:600, color: C.amber2 }}>📄 {fileMeta.filename}</div>
-                <div style={{ fontSize:11, color: C.text3, marginTop:2 }}>
-                  {fileMeta.row_count.toLocaleString()} rows · {fileMeta.col_count} columns — click to replace
-                </div>
-              </>
-            ) : (
-              <>
-                <div style={{ fontSize:13, color: C.text2 }}>Drop a file here or click to browse</div>
-                <div style={{ fontSize:11, color: C.text3, marginTop:2 }}>Supports .csv · .xlsx · .xls</div>
-              </>
-            )}
-          </div>
-          {uploading && <span style={{ marginLeft:'auto', fontSize:12, color: C.amber, animation:'pulse 1s infinite' }}>Uploading…</span>}
+        <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:20, flexWrap:'wrap' }}>
+          <button
+            onClick={() => document.getElementById('sa-file-input').click()}
+            style={{ padding:'10px 20px', background:'rgba(245,158,11,0.1)', border:`1px solid rgba(245,158,11,0.3)`, borderRadius:10, color: C.amber2, fontSize:13, cursor:'pointer', display:'flex', alignItems:'center', gap:8, fontFamily:"'Syne',sans-serif", fontWeight:600 }}>
+            📂 {fileMeta ? 'Replace File' : 'Upload File'}
+          </button>
           <input id="sa-file-input" type="file" accept=".csv,.xlsx,.xls" style={{ display:'none' }} onChange={e => e.target.files[0] && handleFile(e.target.files[0])} />
+          {fileMeta && (
+            <div>
+              <div style={{ fontSize:13, fontWeight:600, color: C.amber2 }}>📄 {fileMeta.filename}</div>
+              <div style={{ fontSize:11, color: C.text3 }}>{fileMeta.row_count.toLocaleString()} rows · {fileMeta.col_count} columns</div>
+            </div>
+          )}
+          {uploading && <span style={{ fontSize:12, color: C.amber }}>Uploading…</span>}
         </div>
         <style>{`@keyframes pulse{0%,100%{opacity:0.5}50%{opacity:1}}`}</style>
 

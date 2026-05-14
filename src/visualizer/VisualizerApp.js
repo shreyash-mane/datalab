@@ -636,6 +636,7 @@ function autoSuggestCharts(numeric, categorical) {
 }
 
 export default function VisualizerApp() {
+  const isMobile = window.innerWidth < 768;
   const { handoff, clearHandoff } = useDataLabStore();
   const [rows, setRows] = useState([]);
   const [columns, setColumns] = useState([]);
@@ -735,22 +736,37 @@ export default function VisualizerApp() {
   const resetAll = () => { setCharts([]); setCalcFields([]); setGlobalFilters([]); };
 
   return (
-    <div style={{ display:'flex', height:'calc(100vh - 52px)', background:'var(--page-bg)', color:'var(--page-text)', fontFamily:"'Syne',sans-serif", overflow:'hidden' }}>
+    <div style={{
+      display:'flex',
+      flexDirection: isMobile ? 'column' : 'row',
+      height: isMobile ? 'auto' : 'calc(100vh - 52px)',
+      minHeight: isMobile ? 'calc(100vh - 52px)' : undefined,
+      overflowX: 'hidden',
+      overflowY: isMobile ? 'auto' : 'hidden',
+      background:'var(--page-bg)', color:'var(--page-text)', fontFamily:"'Syne',sans-serif"
+    }}>
 
       {/* ── Sidebar ── */}
-      <div style={{ width:268, flexShrink:0, borderRight:'1px solid rgba(16,185,129,0.2)', background:'var(--card-bg)', display:'flex', flexDirection:'column', overflowY:'auto' }}>
+      <div style={{
+        width: isMobile ? '100%' : 268,
+        flexShrink: 0,
+        borderRight: isMobile ? 'none' : '1px solid rgba(16,185,129,0.2)',
+        borderBottom: isMobile ? '1px solid rgba(16,185,129,0.2)' : 'none',
+        background:'var(--card-bg)',
+        display:'flex', flexDirection:'column',
+        overflowY:'auto',
+        maxHeight: isMobile ? 280 : undefined
+      }}>
         <div style={{ padding:14, borderBottom:'1px solid rgba(16,185,129,0.1)' }}>
           <h2 style={{ margin:'0 0 12px', fontSize:13, fontWeight:700, color:'#6ee7b7', letterSpacing:0.5 }}>📊 Data Visualizer</h2>
 
           {/* Upload */}
-          <div
-            onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={handleDrop}
-            onClick={() => document.getElementById('viz-file-input').click()}
-            style={{ border:`2px dashed ${dragOver ? '#10b981' : 'rgba(16,185,129,0.3)'}`, borderRadius:10, padding:12, display:'flex', flexDirection:'column', alignItems:'center', gap:5, cursor:'pointer', background: dragOver ? 'rgba(16,185,129,0.07)' : 'transparent', transition:'all 0.2s' }}>
-            <span style={{ fontSize:20 }}>📂</span>
-            <span style={{ fontSize:10, color:'#6b7280', textAlign:'center' }}>Drop CSV or click to upload</span>
+          <div>
+            <button
+              onClick={() => document.getElementById('viz-file-input').click()}
+              style={{ width:'100%', padding:'8px 12px', background:'rgba(16,185,129,0.1)', border:'1px solid rgba(16,185,129,0.3)', borderRadius:8, color:'#6ee7b7', fontSize:12, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6, fontFamily:"'Syne',sans-serif" }}>
+              📂 {fileName ? 'Replace File' : 'Upload File'}
+            </button>
             <input id="viz-file-input" type="file" accept=".csv" style={{ display:'none' }} onChange={e => e.target.files[0] && handleFile(e.target.files[0])} />
           </div>
           {fileName && <p style={{ margin:'7px 0 0', fontSize:10, color:'#6ee7b7', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>📄 {fileName}</p>}
@@ -784,7 +800,7 @@ export default function VisualizerApp() {
       </div>
 
       {/* ── Main Canvas ── */}
-      <div style={{ flex:1, overflowY:'auto', display:'flex', flexDirection:'column' }}>
+      <div style={{ flex:1, minWidth:0, overflowY:'auto', display:'flex', flexDirection:'column' }}>
 
         {/* Debugger handoff banner */}
         {fromDebugger && cleaningSummary && (
@@ -847,7 +863,7 @@ export default function VisualizerApp() {
         )}
 
         {charts.length > 0 && (
-          <div style={{ padding:16, display:'grid', gridTemplateColumns:'repeat(auto-fill, minmax(480px, 1fr))', gap:14, alignItems:'start' }}>
+          <div style={{ padding:16, display:'grid', gridTemplateColumns: isMobile ? '1fr' : 'repeat(auto-fill, minmax(480px, 1fr))', gap:14, alignItems:'start' }}>
             {charts.map((chart, idx) => (
               <VisualCard
                 key={chart.id}

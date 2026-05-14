@@ -71,6 +71,8 @@ export default function DebuggerPage() {
   if (loading) return <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100%', fontSize:24 }}>⏳</div>;
   if (error) return <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100%', color:'#f87171', fontSize:14 }}>⛔ {error}</div>;
 
+  const isMobile = window.innerWidth < 768;
+
   const tabBtn = (tab, label, count) => (
     <button onClick={() => setRightTab(tab)} style={{ flex:1, padding:'10px 4px', background:'none', border:'none', borderBottom: rightTab===tab ? '2px solid #3b82f6' : '2px solid transparent', color: rightTab===tab ? '#e5e7eb' : '#6b7280', fontSize:12, fontWeight:500, cursor:'pointer', position:'relative' }}>
       {label}
@@ -79,9 +81,9 @@ export default function DebuggerPage() {
   );
 
   return (
-    <div style={{ display:'flex', height:'calc(100vh - 52px)', background:'var(--page-bg)', color:'var(--page-text)', fontFamily:"'Syne',sans-serif" }}>
+    <div style={{ display:'flex', flexDirection: isMobile ? 'column' : 'row', height: isMobile ? 'auto' : 'calc(100vh - 52px)', minHeight: isMobile ? 'calc(100vh - 52px)' : undefined, overflowY: isMobile ? 'auto' : 'hidden', overflowX:'hidden', background:'var(--page-bg)', color:'var(--page-text)', fontFamily:"'Syne',sans-serif" }}>
       {/* Left: step sidebar */}
-      <div style={{ width:240, flexShrink:0, borderRight:'1px solid var(--card-border)', background:'var(--card-bg)', display:'flex', flexDirection:'column' }}>
+      <div style={{ width: isMobile ? '100%' : 240, flexShrink:0, borderRight: isMobile ? 'none' : '1px solid var(--card-border)', borderBottom: isMobile ? '1px solid var(--card-border)' : 'none', background:'var(--card-bg)', display:'flex', flexDirection:'column', maxHeight: isMobile ? '40vh' : undefined, overflowY: isMobile ? 'auto' : undefined }}>
         <div style={{ padding:12, borderBottom:'1px solid #252d40' }}>
           <div style={{ display:'flex', alignItems:'center', gap:6, marginBottom:8 }}>
             <button onClick={() => navigate("/debugger/pipeline/" + pid)} style={{ background:'none', border:'none', color:'#6b7280', cursor:'pointer', fontSize:14, padding:2 }}>←</button>
@@ -161,7 +163,7 @@ export default function DebuggerPage() {
       </div>
 
       {/* Right: tabs */}
-      <div style={{ width:300, flexShrink:0, borderLeft:'1px solid var(--card-border)', background:'var(--card-bg)', display:'flex', flexDirection:'column' }}>
+      <div style={{ width: isMobile ? '100%' : 300, flexShrink:0, borderLeft: isMobile ? 'none' : '1px solid var(--card-border)', borderTop: isMobile ? '1px solid var(--card-border)' : 'none', background:'var(--card-bg)', display:'flex', flexDirection:'column' }}>
         <div style={{ display:'flex', borderBottom:'1px solid #252d40', flexShrink:0 }}>
           {tabBtn('anomalies', 'Anomalies', anomalies.length)}
           {tabBtn('explanations', 'Explain', explanations.length)}

@@ -5,8 +5,14 @@ import { useDataLabStore } from '../../store/dataLabStore';
 import {
   uploadDataset, listDatasets, deleteDataset, createPipeline
 } from '../api/client';
+
 import DataTable from './DataTable';
 import AutoCleanPanel from './AutoCleanPanel';
+
+const _dsKey = email => `dlab_ds_${email || 'guest'}`;
+const _loadIds = email => { try { return JSON.parse(localStorage.getItem(_dsKey(email)) || '[]'); } catch { return []; } };
+const _addId = (email, id) => { const ids = _loadIds(email); const sid = String(id); if (!ids.map(String).includes(sid)) localStorage.setItem(_dsKey(email), JSON.stringify([...ids.map(String), sid])); };
+const _removeId = (email, id) => localStorage.setItem(_dsKey(email), JSON.stringify(_loadIds(email).filter(i => i !== id)));
 
 function FinderHandoffBanner({ meta, onFileReady, onDismiss }) {
   const [fetching, setFetching] = useState(false);
@@ -88,9 +94,10 @@ function FinderHandoffBanner({ meta, onFileReady, onDismiss }) {
 }
 
 export default function UploadPage() {
+  const isMobile = window.innerWidth < 768;
   const navigate = useNavigate();
   const { datasets, setDatasets, setActiveDataset, setActivePipeline, setActiveFile } = useAppStore();
-  const { handoff, clearHandoff } = useDataLabStore();
+  const { handoff, clearHandoff, datalabUser } = useDataLabStore();
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState(null);
   const [backendDown, setBackendDown] = useState(false);
@@ -105,7 +112,10 @@ export default function UploadPage() {
 
   useEffect(() => {
     listDatasets()
-      .then(setDatasets)
+      .then(all => {
+        const myIds = _loadIds(datalabUser?.email).map(String);
+        setDatasets(all.filter(d => myIds.includes(String(d.id))));
+      })
       .catch(e => {
         if (e.message && (e.message.includes('Cannot reach') || e.message.includes('Failed to fetch'))) {
           setBackendDown(true);
@@ -121,6 +131,7 @@ export default function UploadPage() {
     setUploading(true);
     try {
       const ds = await uploadDataset(file);
+      _addId(datalabUser?.email, ds.id);
       setDatasets([ds, ...datasets]);
       setPreview(ds);
       setPreviewFile(file);
@@ -139,6 +150,7 @@ export default function UploadPage() {
   const handleDelete = async (ds, e) => {
     e.stopPropagation();
     await deleteDataset(ds.id);
+    _removeId(datalabUser?.email, ds.id);
     setDatasets(datasets.filter(d => d.id !== ds.id));
     if (preview && preview.id === ds.id) { setPreview(null); setPreviewFile(null); }
   };
@@ -171,24 +183,17 @@ export default function UploadPage() {
 
   return (
     <>
-    <div style={{ display:'flex', height:'calc(100vh - 52px)', fontFamily:"'Syne', sans-serif", background:'var(--page-bg)', color:'var(--page-text)' }}>
+    <div style={{ display:'flex', flexDirection: isMobile ? 'column' : 'row', height: isMobile ? 'auto' : 'calc(100vh - 52px)', minHeight: isMobile ? 'calc(100vh - 52px)' : undefined, overflowY: isMobile ? 'auto' : 'hidden', overflowX:'hidden', fontFamily:"'Syne', sans-serif", background:'var(--page-bg)', color:'var(--page-text)' }}>
       {/* Sidebar */}
-      <div style={s.sidebar}>
+      <div style={{ ...s.sidebar, width: isMobile ? '100%' : 280, height: isMobile ? 'auto' : 'calc(100vh - 52px)', borderRight: isMobile ? 'none' : '1px solid var(--card-border)', borderBottom: isMobile ? '1px solid var(--card-border)' : 'none' }}>
         <div style={s.sideHead}>
           <h2 style={{ margin:'0 0 12px', fontSize:13, fontWeight:600, color:'#d1d5db' }}>Datasets</h2>
-          <div
-            style={s.dropzone}
+          <button
             onClick={() => document.getElementById('debugger-file-input').click()}
-            onDragOver={e => { e.preventDefault(); setDragOver(true); }}
-            onDragLeave={() => setDragOver(false)}
-            onDrop={handleDrop}
-          >
-            <div style={{ fontSize:20 }}>{uploading ? '⏳' : '📤'}</div>
-            <p style={{ fontSize:11, color:'#6b7280', textAlign:'center', margin:0 }}>
-              {uploading ? 'Uploading...' : 'Drop CSV or click to browse'}
-            </p>
-            <input id="debugger-file-input" type="file" accept=".csv" style={{ display:'none' }} onChange={e => e.target.files[0] && handleFile(e.target.files[0])} />
-          </div>
+            style={{ width:'100%', padding:'9px 14px', background:'rgba(59,130,246,0.1)', border:'1px solid rgba(59,130,246,0.3)', borderRadius:8, color:'#60a5fa', fontSize:12, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:8, fontFamily:"'Syne',sans-serif", fontWeight:600, marginBottom:0 }}>
+            {uploading ? '⏳ Uploading…' : '📂 Upload CSV'}
+          </button>
+          <input id="debugger-file-input" type="file" accept=".csv" style={{ display:'none' }} onChange={e => e.target.files[0] && handleFile(e.target.files[0])} />
           {error && <div style={{ marginTop:8, fontSize:11, color:'#f87171', display:'flex', alignItems:'center', gap:4 }}>⚠ {error}</div>}
           {backendDown && (
             <div style={{ marginTop:8, padding:10, background:'rgba(127,29,29,0.2)', border:'1px solid rgba(239,68,68,0.3)', borderRadius:8, fontSize:11, color:'#fca5a5' }}>

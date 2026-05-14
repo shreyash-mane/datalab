@@ -87,6 +87,7 @@ export default function PipelineBuilder() {
 
   if (loading) return <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100%', color:'#3b82f6', fontSize:24 }}>⏳</div>;
 
+  const isMobile = window.innerWidth < 768;
   const S = {
     container: { display:'flex', height:'calc(100vh - 52px)', background:'var(--page-bg)', color:'var(--page-text)', fontFamily:"'Syne',sans-serif" },
     sidebar: { width:300, flexShrink:0, borderRight:'1px solid var(--card-border)', background:'var(--card-bg)', display:'flex', flexDirection:'column' },
@@ -97,8 +98,8 @@ export default function PipelineBuilder() {
 
   return (
     <>
-    <div style={S.container}>
-      <div style={S.sidebar}>
+    <div style={{ ...S.container, flexDirection: isMobile ? 'column' : 'row', height: isMobile ? 'auto' : S.container.height || 'calc(100vh - 52px)', minHeight: isMobile ? 'calc(100vh - 52px)' : undefined, overflowY: isMobile ? 'auto' : 'hidden' }}>
+      <div style={{ ...S.sidebar, width: isMobile ? '100%' : 300, borderRight: isMobile ? 'none' : '1px solid var(--card-border)', borderBottom: isMobile ? '1px solid #252d40' : 'none', height: isMobile ? 'auto' : S.sidebar.height, maxHeight: isMobile ? '50vh' : undefined }}>
         <div style={S.sideHead}>
           <div style={{ display:'flex', alignItems:'center', gap:8, marginBottom:10 }}>
             <button onClick={() => navigate('/debugger')} style={{ background:'none', border:'none', color:'#6b7280', cursor:'pointer', fontSize:16, padding:2 }}>←</button>

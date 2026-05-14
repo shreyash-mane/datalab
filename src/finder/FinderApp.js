@@ -86,6 +86,8 @@ const GLOBAL_CSS = `
     .filter-row{flex-direction:column!important}
     .hero-badges{flex-wrap:wrap!important}
     .how-grid{grid-template-columns:1fr!important}
+    .saved-grid{grid-template-columns:1fr!important}
+    .finder-nav-btns button,.finder-nav-btns a{padding:6px 10px!important;font-size:12px!important}
   }
 `;
 
@@ -210,7 +212,7 @@ export default function FinderApp() {
         <span onClick={() => setPage("search")} style={{ fontWeight: 800, fontSize: 18, color: "#6fa3ef", cursor: "pointer", letterSpacing: 0.5, display: "flex", alignItems: "center", gap: 8 }}>
           <span style={{ fontSize: 22 }}>⬡</span> DatasetFinder
         </span>
-        <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+        <div className="finder-nav-btns" style={{ display: "flex", gap: 8, alignItems: "center" }}>
           {user ? <ProfileDropdown user={user} logout={logout} setPage={setPage} /> : (
             <>
               <button onClick={() => setPage("login")} style={{ ...S.btn("ghost"), padding: "7px 16px", fontSize: 13 }}>Login</button>
@@ -883,7 +885,7 @@ function SavedPage({ user, setPage }) {
         <h1 style={{ margin: 0, fontSize: 26, fontWeight: 800, color: "#e0e8ff" }}>📚 My Library</h1>
         <span style={{ padding: "3px 12px", background: "rgba(59,130,246,0.15)", border: "1px solid #3b82f6", borderRadius: 20, fontSize: 11, color: "#6fa3ef" }}>{datasets.length} saved</span>
       </div>
-      <div style={{ display: "grid", gridTemplateColumns: "210px 1fr", gap: 16 }}>
+      <div className="saved-grid" style={{ display: "grid", gridTemplateColumns: "210px 1fr", gap: 16 }}>
         <div>
           <div style={{ ...S.card, padding: 14, marginBottom: 10 }}>
             <p style={{ margin: "0 0 8px", fontSize: 10, color: "#6b7a9a", fontFamily: "'Space Mono',monospace", letterSpacing: 1 }}>COLLECTIONS</p>

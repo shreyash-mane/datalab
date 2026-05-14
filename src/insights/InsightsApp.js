@@ -37,7 +37,11 @@ const CSS = `
   .ins-input:focus{border-color:#7c3aed;}
   .cust-row{display:flex;flex-direction:column;gap:4px;margin-bottom:12px;}
   .cust-label{font-size:11px;color:#6b7a9a;font-family:"Space Mono",monospace;letter-spacing:0.5px;}
-  @media(max-width:900px){.ins-layout{flex-direction:column!important;}}
+  @media(max-width:900px){
+    .ins-layout{flex-direction:column!important;height:auto!important;min-height:unset!important;}
+    .ins-layout>div{width:100%!important;border-left:none!important;border-right:none!important;border-top:1px solid rgba(124,58,237,0.15);padding-left:0!important;padding-right:0!important;}
+    .ins-header-pad,.ins-upload-pad{padding-left:16px!important;padding-right:16px!important;}
+  }
 `;
 
 // ── Tooltip style ─────────────────────────────────────────────────────────────
@@ -327,6 +331,7 @@ function CustomizePanel({ detail, fileId, onChartUpdate }) {
 
 // ── Main App ─────────────────────────────────────────────────────────────────
 export default function InsightsApp() {
+  const isMobile = window.innerWidth < 768;
   const [fileId,       setFileId]       = useState('');
   const [columns,      setColumns]      = useState([]);
   const [summary,      setSummary]      = useState(null);
@@ -393,7 +398,7 @@ export default function InsightsApp() {
       <style>{CSS}</style>
 
       {/* Header */}
-      <div style={{padding:'28px 32px 0',maxWidth:1600,margin:'0 auto'}}>
+      <div className="ins-header-pad" style={{padding: isMobile ? '16px 16px 0' : '28px 32px 0',maxWidth:1600,margin:'0 auto'}}>
         <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:6}}>
           <div style={{width:36,height:36,borderRadius:10,background:`linear-gradient(135deg,#5b21b6,${PURPLE})`,display:'flex',alignItems:'center',justifyContent:'center',fontSize:18}}>🤖</div>
           <div>
@@ -404,22 +409,18 @@ export default function InsightsApp() {
       </div>
 
       {/* Upload bar */}
-      <div style={{padding:'20px 32px',maxWidth:1600,margin:'0 auto'}}>
+      <div className="ins-upload-pad" style={{padding: isMobile ? '12px 16px' : '20px 32px',maxWidth:1600,margin:'0 auto'}}>
         {!fileId ? (
-          <div
-            onDragOver={e=>{e.preventDefault();setDragOver(true)}}
-            onDragLeave={()=>setDragOver(false)}
-            onDrop={onDrop}
-            style={{border:`2px dashed ${dragOver?PURPLE:'rgba(124,58,237,0.3)'}`,borderRadius:16,padding:'40px 24px',textAlign:'center',background:dragOver?'rgba(124,58,237,0.06)':'rgba(8,5,20,0.6)',transition:'all 0.2s',cursor:'pointer'}}
-            onClick={()=>document.getElementById('ins-file-input').click()}
-          >
-            <input id="ins-file-input" type="file" accept=".csv,.xlsx,.xls" style={{display:'none'}} onChange={onFileInput}/>
-            <div style={{fontSize:40,marginBottom:12}}>{uploading?'⏳':'📁'}</div>
-            <div style={{fontSize:15,fontWeight:700,color:'#c4b5fd',marginBottom:6}}>
-              {uploading ? 'Uploading…' : 'Drop your CSV or Excel file here'}
-            </div>
-            <div style={{fontSize:12,color:'#4a5a7a'}}>or click to browse · .csv, .xlsx, .xls supported</div>
-            {uploadErr && <div style={{marginTop:12,fontSize:12,color:'#ef4444'}}>{uploadErr}</div>}
+          <div style={{ display:'flex', alignItems:'center', gap:12, flexWrap:'wrap' }}>
+            <button
+              className="ins-btn"
+              onClick={() => document.getElementById('ins-file-input').click()}
+              style={{ background:`linear-gradient(135deg,#5b21b6,${PURPLE})`, color:'#fff', padding:'10px 22px', display:'flex', alignItems:'center', gap:8 }}>
+              {uploading ? '⏳ Uploading…' : '📂 Upload File'}
+            </button>
+            <input id="ins-file-input" type="file" accept=".csv,.xlsx,.xls" style={{ display:'none' }} onChange={onFileInput} />
+            <span style={{ fontSize:12, color:'#4a5a7a' }}>.csv, .xlsx, .xls supported</span>
+            {uploadErr && <div style={{ fontSize:12, color:'#ef4444', width:'100%' }}>{uploadErr}</div>}
           </div>
         ) : (
           <div style={{display:'flex',alignItems:'center',gap:16,background:'rgba(8,5,20,0.8)',border:'1px solid rgba(124,58,237,0.3)',borderRadius:12,padding:'14px 20px',flexWrap:'wrap'}}>
@@ -471,10 +472,15 @@ export default function InsightsApp() {
 
       {/* Main 3-column layout */}
       {insights.length > 0 && (
-        <div className="ins-layout" style={{display:'flex',gap:0,maxWidth:1600,margin:'0 auto',padding:'0 32px 40px',height:'calc(100vh - 220px)',minHeight:500}}>
+        <div className="ins-layout" style={{
+          display:'flex', gap:0, maxWidth:1600, margin:'0 auto',
+          padding: isMobile ? '0 16px 40px' : '0 32px 40px',
+          height: isMobile ? 'auto' : 'calc(100vh - 220px)',
+          minHeight: isMobile ? 'unset' : 500
+        }}>
 
           {/* LEFT — Insight cards */}
-          <div style={{width:300,flexShrink:0,display:'flex',flexDirection:'column',gap:0,paddingRight:20}}>
+          <div style={{width: isMobile ? '100%' : 300,flexShrink:0,display:'flex',flexDirection:'column',gap:0,paddingRight:20}}>
             <div style={{fontSize:11,color:PURPLE,fontFamily:"'Space Mono',monospace",letterSpacing:1,marginBottom:12}}>
               TOP INSIGHTS ({insights.length})
             </div>
@@ -515,7 +521,7 @@ export default function InsightsApp() {
           </div>
 
           {/* RIGHT — Explanation + Customize */}
-          <div style={{width:300,flexShrink:0,paddingLeft:20,display:'flex',flexDirection:'column',gap:0,overflowY:'auto'}}>
+          <div style={{width: isMobile ? '100%' : 300,flexShrink:0,paddingLeft:20,display:'flex',flexDirection:'column',gap:0,overflowY:'auto'}}>
             {!detail && !loadingDetail && (
               <div style={{color:'#4a5a7a',fontSize:12,textAlign:'center',paddingTop:60}}>
                 <div style={{fontSize:32,marginBottom:8}}>💡</div>
