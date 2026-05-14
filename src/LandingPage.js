@@ -166,13 +166,24 @@ const CSS = `
 
   /* ── Stats row ── */
   .stat-divider{width:1px;height:32px;background:rgba(30,58,138,0.4);}
+
+  /* ── Mobile overrides ── */
+  @media(max-width:639px){
+    .arrow-btn{width:38px;height:38px;font-size:19px;}
+    .mod-card-pad{padding:22px 16px 20px !important;}
+    .hero-badge-text{display:none;}
+    .hero-badge-short{display:inline !important;}
+  }
+  @media(min-width:640px){
+    .hero-badge-short{display:none;}
+  }
 `;
 
 // ─── Module card (module-level so React never remounts it) ────────────────────
 function ModuleCard({ mod, navigate, isActive }) {
   return (
     <div
-      className={isActive ? 'mod-card-active' : ''}
+      className={`mod-card-pad${isActive ? ' mod-card-active' : ''}`}
       onClick={() => navigate(mod.route)}
       style={{
         background: mod.cardBg,
@@ -297,10 +308,10 @@ export default function LandingPage() {
     else if (dx < -48) next();
   };
 
-  // Carousel sizing
-  const CARD_W  = isMobile ? Math.min(300, windowW - 112) : isTablet ? 330 : 420;
-  const STEP    = isMobile ? 0 : isTablet ? 370 : 468;
-  const TRACK_H = isMobile ? 540 : isTablet ? 510 : 488;
+  // Carousel sizing (mobile uses fade layout — no fixed dimensions needed)
+  const CARD_W  = isTablet ? 330 : 420;
+  const STEP    = isTablet ? 370 : 468;
+  const TRACK_H = isTablet ? 510 : 488;
 
   const mod = MODULES[active];
 
@@ -322,9 +333,10 @@ export default function LandingPage() {
         <div style={{ textAlign: 'center', maxWidth: 820, animation: 'fadeUp 0.7s ease forwards', marginBottom: isMobile ? 48 : 64 }}>
 
           {/* Top pill badge */}
-          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 18px', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.22)', borderRadius: 30, fontSize: 10.5, color: '#6fa3ef', fontFamily: "'Space Mono',monospace", letterSpacing: 1.2, marginBottom: 30, textTransform: 'uppercase' }}>
+          <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '6px 16px', background: 'rgba(59,130,246,0.08)', border: '1px solid rgba(59,130,246,0.22)', borderRadius: 30, fontSize: 10.5, color: '#6fa3ef', fontFamily: "'Space Mono',monospace", letterSpacing: 1, marginBottom: 30, textTransform: 'uppercase' }}>
             <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#3b82f6', display: 'inline-block', boxShadow: '0 0 8px #3b82f6', flexShrink: 0 }} />
-            Data Research Suite — 5 Powerful Tools
+            <span className="hero-badge-text">Data Research Suite — 5 Powerful Tools</span>
+            <span className="hero-badge-short">5 AI-Powered Tools</span>
           </div>
 
           {/* H1 */}
@@ -386,54 +398,75 @@ export default function LandingPage() {
           </div>
 
           {/* Arrow + Track + Arrow row */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: isMobile ? 8 : 14, marginBottom: 22 }}>
+          <div
+            style={{ display: 'flex', alignItems: isMobile ? 'flex-start' : 'center', gap: isMobile ? 6 : 14, marginBottom: 22 }}
+            onTouchStart={onTouchStart}
+            onTouchEnd={onTouchEnd}
+          >
 
             {/* Left arrow */}
-            <button className="arrow-btn" onClick={prev} aria-label="Previous module">‹</button>
+            <button className="arrow-btn" onClick={prev} aria-label="Previous module"
+              style={{ marginTop: isMobile ? 16 : 0, flexShrink: 0 }}>‹</button>
 
             {/* Carousel track */}
-            <div
-              style={{ flex: 1, position: 'relative', height: TRACK_H, overflow: 'hidden' }}
-              onTouchStart={onTouchStart}
-              onTouchEnd={onTouchEnd}
-            >
-              {MODULES.map((m, i) => {
-                const offset   = i - active;
-                const absOff   = Math.abs(offset);
-                const isActive = absOff === 0;
-                const isSide   = absOff === 1;
+            {isMobile ? (
+              /* ── Mobile: fade layout, height = card content ── */
+              <div style={{ flex: 1, position: 'relative', minHeight: 10 }}>
+                {MODULES.map((m, i) => {
+                  const isAct = i === active;
+                  return (
+                    <div
+                      key={m.id}
+                      style={{
+                        position: isAct ? 'relative' : 'absolute',
+                        top: 0, left: 0, right: 0,
+                        opacity: isAct ? 1 : 0,
+                        transition: 'opacity 0.38s ease',
+                        pointerEvents: isAct ? 'all' : 'none',
+                        zIndex: isAct ? 2 : 1,
+                      }}
+                    >
+                      <ModuleCard mod={m} navigate={navigate} isActive={isAct} />
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              /* ── Desktop/tablet: absolute 3D carousel ── */
+              <div style={{ flex: 1, position: 'relative', height: TRACK_H, overflow: 'hidden' }}>
+                {MODULES.map((m, i) => {
+                  const offset   = i - active;
+                  const absOff   = Math.abs(offset);
+                  const isAct    = absOff === 0;
+                  const isSide   = absOff === 1;
 
-                const scale   = isActive ? 1 : isSide ? 0.87 : 0.74;
-                const opacity = isActive ? 1 : (isMobile ? 0 : isSide ? 0.5 : 0);
-                const blur    = isActive ? 0 : isSide ? 2 : 4;
-                const tx      = offset * STEP;
-
-                return (
-                  <div
-                    key={m.id}
-                    style={{
-                      position: 'absolute',
-                      top: 0,
-                      left: '50%',
-                      width: CARD_W,
-                      transform: `translateX(calc(-50% + ${tx}px)) scale(${scale})`,
-                      transformOrigin: 'top center',
-                      opacity,
-                      filter: blur > 0 ? `blur(${blur}px) brightness(${isSide ? 0.75 : 0.5})` : 'none',
-                      zIndex: 20 - absOff * 6,
-                      transition: 'transform 0.52s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.52s ease, filter 0.52s ease',
-                      pointerEvents: isActive ? 'all' : 'none',
-                      willChange: 'transform, opacity',
-                    }}
-                  >
-                    <ModuleCard mod={m} navigate={navigate} isActive={isActive} />
-                  </div>
-                );
-              })}
-            </div>
+                  return (
+                    <div
+                      key={m.id}
+                      style={{
+                        position: 'absolute',
+                        top: 0, left: '50%',
+                        width: CARD_W,
+                        transform: `translateX(calc(-50% + ${offset * STEP}px)) scale(${isAct ? 1 : isSide ? 0.87 : 0.74})`,
+                        transformOrigin: 'top center',
+                        opacity: isAct ? 1 : isSide ? 0.5 : 0,
+                        filter: isAct ? 'none' : isSide ? 'blur(2px) brightness(0.75)' : 'blur(4px) brightness(0.5)',
+                        zIndex: 20 - absOff * 6,
+                        transition: 'transform 0.52s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.52s ease, filter 0.52s ease',
+                        pointerEvents: isAct ? 'all' : 'none',
+                        willChange: 'transform, opacity',
+                      }}
+                    >
+                      <ModuleCard mod={m} navigate={navigate} isActive={isAct} />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             {/* Right arrow */}
-            <button className="arrow-btn" onClick={next} aria-label="Next module">›</button>
+            <button className="arrow-btn" onClick={next} aria-label="Next module"
+              style={{ marginTop: isMobile ? 16 : 0, flexShrink: 0 }}>›</button>
           </div>
 
           {/* Dot indicators */}
